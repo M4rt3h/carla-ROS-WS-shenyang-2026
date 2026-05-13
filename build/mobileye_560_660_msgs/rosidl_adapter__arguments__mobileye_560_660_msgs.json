@@ -1,0 +1,18 @@
+{
+  "package_name": "mobileye_560_660_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/AftermarketLane.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/Ahbc.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/AhbcGradual.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/AwsDisplay.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/FixedFoe.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/Lane.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/LkaLane.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/LkaNumOfNextLaneMarkersReported.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/LkaReferencePoints.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/ObstacleData.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/ObstacleStatus.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/Tsr.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/mobileye_560_660_msgs:msg/TsrVisionOnly.msg"
+  ]
+}

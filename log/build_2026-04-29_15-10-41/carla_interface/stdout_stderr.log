@@ -1,0 +1,48 @@
+running egg_info
+creating ../build/carla_interface/carla_interface.egg-info
+writing ../build/carla_interface/carla_interface.egg-info/PKG-INFO
+writing dependency_links to ../build/carla_interface/carla_interface.egg-info/dependency_links.txt
+writing entry points to ../build/carla_interface/carla_interface.egg-info/entry_points.txt
+writing requirements to ../build/carla_interface/carla_interface.egg-info/requires.txt
+writing top-level names to ../build/carla_interface/carla_interface.egg-info/top_level.txt
+writing manifest file '../build/carla_interface/carla_interface.egg-info/SOURCES.txt'
+reading manifest file '../build/carla_interface/carla_interface.egg-info/SOURCES.txt'
+writing manifest file '../build/carla_interface/carla_interface.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build
+creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib
+creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+copying carla_interface/my_first_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+copying carla_interface/inference_trajectoire_node_save.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+copying carla_interface/classes.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+copying carla_interface/inference_trajectoire_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+copying carla_interface/__init__.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+copying carla_interface/control_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+running install
+running install_lib
+creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/my_first_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/inference_trajectoire_node_save.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/classes.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/inference_trajectoire_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/__init__.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/control_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/my_first_node.py to my_first_node.cpython-38.pyc
+byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/inference_trajectoire_node_save.py to inference_trajectoire_node_save.cpython-38.pyc
+byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/classes.py to classes.cpython-38.pyc
+byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/inference_trajectoire_node.py to inference_trajectoire_node.cpython-38.pyc
+byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/__init__.py to __init__.cpython-38.pyc
+byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/control_node.py to control_node.cpython-38.pyc
+running install_data
+creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/share/ament_index
+creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/share/ament_index/resource_index
+creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/share/ament_index/resource_index/packages
+copying resource/carla_interface -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/share/ament_index/resource_index/packages
+copying package.xml -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/share/carla_interface
+running install_egg_info
+Copying ../build/carla_interface/carla_interface.egg-info to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface-0.0.0-py3.8.egg-info
+running install_scripts
+Installing my_node script to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/carla_interface
+Installing trajectory_node script to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/carla_interface
+writing list of installed files to '/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/install.log'

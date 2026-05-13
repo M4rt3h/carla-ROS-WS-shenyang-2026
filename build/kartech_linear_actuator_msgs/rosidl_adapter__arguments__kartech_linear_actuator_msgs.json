@@ -1,0 +1,27 @@
+{
+  "package_name": "kartech_linear_actuator_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ActuatorUniqueIdReq.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/AutoZeroCalCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ConfigureOutputsKdFreqDeadbandCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ConfigureOutputsKpKiCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ConfigureOutputsPwmFreqCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/EnhancedPositionRpt.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/MotorCurrentRpt.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/MotorOverCurrentConfigCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/PositionCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/PositionReachErrorTimeConfigCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/PositionRpt.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/PriorityConfigCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ReassignCommandIdCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ReassignReportIdCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ReportIndex.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ReportPollReq.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ResetCmd.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ScheduledReportRatesReq.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/SoftwareRevisionRpt.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/SoftwareVersionReq.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/UniqueDeviceIdRpt.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/kartech_linear_actuator_msgs:msg/ZeroingMessageRpt.msg"
+  ]
+}

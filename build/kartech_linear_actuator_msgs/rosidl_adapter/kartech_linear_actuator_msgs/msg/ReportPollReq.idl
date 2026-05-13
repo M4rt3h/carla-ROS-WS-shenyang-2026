@@ -1,0 +1,20 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from kartech_linear_actuator_msgs/msg/ReportPollReq.msg
+// generated code does not contain a copyright notice
+
+#include "kartech_linear_actuator_msgs/msg/ReportIndex.idl"
+#include "std_msgs/msg/Header.idl"
+
+module kartech_linear_actuator_msgs {
+  module msg {
+    struct ReportPollReq {
+      std_msgs::msg::Header header;
+
+      boolean confirm;
+
+      @verbatim (language="comment", text=
+        " The indicies of the reports that you would like to receive. Up to 6 may be requested at a time.")
+      sequence<kartech_linear_actuator_msgs::msg::ReportIndex> report_indices;
+    };
+  };
+};

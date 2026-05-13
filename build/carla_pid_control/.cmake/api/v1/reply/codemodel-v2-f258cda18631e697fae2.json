@@ -1,0 +1,78 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.8"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "carla_pid_control",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "carla_pid_control_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-carla_pid_control_uninstall-857e0432fcd8d2720610.json",
+					"name" : "carla_pid_control_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "carla_stanley_pid_control::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-carla_stanley_pid_control-3edd816cc6feb6d381d5.json",
+					"name" : "carla_stanley_pid_control",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-4b6477f141086213a96b.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_pid_control",
+		"source" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-control-algorithm/carla_pid_control"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 0
+	}
+}

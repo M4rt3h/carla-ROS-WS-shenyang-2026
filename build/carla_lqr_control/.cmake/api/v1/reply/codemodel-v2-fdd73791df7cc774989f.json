@@ -1,0 +1,87 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.8"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "carla_lqr_control",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "carla_lqr_control::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-carla_lqr_control-301366bc59b2241bb3f5.json",
+					"name" : "carla_lqr_control",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "carla_lqr_control_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-carla_lqr_control_uninstall-ea77da26291547ba7f7b.json",
+					"name" : "carla_lqr_control_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "carla_lqr_pid_control::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-carla_lqr_pid_control-e546626bfea01948a6e5.json",
+					"name" : "carla_lqr_pid_control",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-5d6391b16913b120a14c.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_lqr_control",
+		"source" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-control-algorithm/carla_lqr_control"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 0
+	}
+}

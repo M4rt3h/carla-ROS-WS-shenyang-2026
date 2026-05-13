@@ -1,0 +1,25 @@
+{
+  "package_name": "delphi_esr_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrEthTx.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus1.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus2.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus3.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus4.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus5.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus6.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus7.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus8.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrStatus9.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrTrack.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrTrackMotionPowerTrack.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrTrackMotionPowerGroup.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrValid1.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrValid2.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrVehicle1.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrVehicle2.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrVehicle3.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrVehicle4.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_esr_msgs:msg/EsrVehicle5.msg"
+  ]
+}

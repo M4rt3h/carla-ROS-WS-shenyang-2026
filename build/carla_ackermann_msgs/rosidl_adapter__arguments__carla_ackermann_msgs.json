@@ -1,0 +1,10 @@
+{
+  "package_name": "carla_ackermann_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_ackermann_msgs:msg/EgoVehicleControlInfo.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_ackermann_msgs:msg/EgoVehicleControlCurrent.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_ackermann_msgs:msg/EgoVehicleControlMaxima.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_ackermann_msgs:msg/EgoVehicleControlStatus.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_ackermann_msgs:msg/EgoVehicleControlTarget.msg"
+  ]
+}

@@ -1,0 +1,50 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ibeo_msgs/msg/ScanData2204.msg
+// generated code does not contain a copyright notice
+
+#include "ibeo_msgs/msg/IbeoDataHeader.idl"
+#include "ibeo_msgs/msg/ScanPoint2204.idl"
+#include "ibeo_msgs/msg/ScannerInfo2204.idl"
+#include "std_msgs/msg/Header.idl"
+
+module ibeo_msgs {
+  module msg {
+    module ScanData2204_Constants {
+      const uint8 FRONT = 0;
+      const uint8 REAR = 1;
+      const uint8 SCANNER = 0;
+      const uint8 VEHICLE = 1;
+    };
+    struct ScanData2204 {
+      std_msgs::msg::Header header;
+
+      ibeo_msgs::msg::IbeoDataHeader ibeo_header;
+
+      uint64 scan_start_time;
+
+      uint32 scan_end_time_offset;
+
+      boolean ground_labeled;
+
+      boolean dirt_labeled;
+
+      boolean rain_labeled;
+
+      boolean fused_scan;
+
+      uint8 mirror_side;
+
+      uint8 coordinate_system;
+
+      uint16 scan_number;
+
+      uint16 scan_points;
+
+      uint16 number_of_scanner_infos;
+
+      sequence<ibeo_msgs::msg::ScannerInfo2204> scanner_info_list;
+
+      sequence<ibeo_msgs::msg::ScanPoint2204> scan_point_list;
+    };
+  };
+};

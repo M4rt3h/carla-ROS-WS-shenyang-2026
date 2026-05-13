@@ -1,0 +1,33 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ibeo_msgs/msg/UntrackedProperties.msg
+// generated code does not contain a copyright notice
+
+#include "ibeo_msgs/msg/ContourPointSigma.idl"
+#include "ibeo_msgs/msg/Point2Di.idl"
+#include "ibeo_msgs/msg/Point2Dui.idl"
+
+module ibeo_msgs {
+  module msg {
+    struct UntrackedProperties {
+      uint16 relative_time_of_measurement;
+
+      ibeo_msgs::msg::Point2Di position_closest_point;
+
+      ibeo_msgs::msg::Point2Di object_box_size;
+
+      ibeo_msgs::msg::Point2Dui object_box_size_sigma;
+
+      int16 object_box_orientation;
+
+      uint16 object_box_orientation_sigma;
+
+      ibeo_msgs::msg::Point2Di tracking_point_coordinate;
+
+      ibeo_msgs::msg::Point2Dui tracking_point_coordinate_sigma;
+
+      uint8 number_of_contour_points;
+
+      sequence<ibeo_msgs::msg::ContourPointSigma> contour_point_list;
+    };
+  };
+};

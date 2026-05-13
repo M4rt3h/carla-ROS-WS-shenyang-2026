@@ -1,0 +1,3 @@
+[console_scripts]
+prediction_node = carla_prediction.prediction_node:main
+

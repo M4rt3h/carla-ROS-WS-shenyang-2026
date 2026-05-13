@@ -1,0 +1,23 @@
+{
+  "package_name": "delphi_mrr_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/ActiveFaultLatched1.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/ActiveFaultLatched2.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrControlMsgFR.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrControlMsgNR.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrDetection.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrHeaderAlignmentState.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrHeaderInformationDetections.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrHeaderSensorCoverage.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrHeaderSensorPosition.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrHeaderTimestamps.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrStatusCanVersion.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrStatusRadar.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrStatusSerialNumber.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrStatusSwVersion.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/MrrStatusTempVolt.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/VehicleStateMsg1.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/VehicleStateMsg2.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_mrr_msgs:msg/VehicleStateMsg3.msg"
+  ]
+}

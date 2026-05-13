@@ -1,0 +1,17 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from kartech_linear_actuator_msgs/msg/AutoZeroCalCmd.msg
+// generated code does not contain a copyright notice
+
+#include "std_msgs/msg/Header.idl"
+
+module kartech_linear_actuator_msgs {
+  module msg {
+    struct AutoZeroCalCmd {
+      std_msgs::msg::Header header;
+
+      boolean confirm;
+
+      boolean auto_reply;
+    };
+  };
+};

@@ -1,0 +1,22 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ibeo_msgs/msg/DeviceStatus.msg
+// generated code does not contain a copyright notice
+
+#include "ibeo_msgs/msg/IbeoDataHeader.idl"
+#include "std_msgs/msg/Header.idl"
+
+module ibeo_msgs {
+  module msg {
+    struct DeviceStatus {
+      std_msgs::msg::Header header;
+
+      ibeo_msgs::msg::IbeoDataHeader ibeo_header;
+
+      uint8 scanner_type;
+
+      float sensor_temperature;
+
+      float frequency;
+    };
+  };
+};

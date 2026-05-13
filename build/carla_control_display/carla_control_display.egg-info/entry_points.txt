@@ -1,0 +1,3 @@
+[console_scripts]
+carla_control_display = carla_control_display.carla_control_display:main
+

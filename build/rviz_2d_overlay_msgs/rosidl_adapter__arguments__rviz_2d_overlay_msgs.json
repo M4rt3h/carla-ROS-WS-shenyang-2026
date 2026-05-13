@@ -1,0 +1,6 @@
+{
+  "package_name": "rviz_2d_overlay_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/rviz_2d_overlay_msgs:msg/OverlayText.msg"
+  ]
+}

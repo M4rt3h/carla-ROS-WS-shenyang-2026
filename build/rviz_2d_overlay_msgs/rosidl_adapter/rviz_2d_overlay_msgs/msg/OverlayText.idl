@@ -1,0 +1,57 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from rviz_2d_overlay_msgs/msg/OverlayText.msg
+// generated code does not contain a copyright notice
+
+#include "std_msgs/msg/ColorRGBA.idl"
+
+module rviz_2d_overlay_msgs {
+  module msg {
+    module OverlayText_Constants {
+      const uint8 ADD = 0;
+      const uint8 DELETE = 1;
+      const uint8 LEFT = 0;
+      const uint8 RIGHT = 1;
+      const uint8 CENTER = 2;
+      const uint8 TOP = 3;
+      const uint8 BOTTOM = 4;
+    };
+    struct OverlayText {
+      uint8 action;
+
+      int32 width;
+
+      int32 height;
+
+      @verbatim (language="comment", text=
+        " Position: Positive values move the overlay towards the center of the window," "\n"
+        "  for center alignment positive values move the overlay towards the bottom right" "\n"
+        " Horizontal distance from left/right border or center, depending on alignment")
+      int32 horizontal_distance;
+
+      @verbatim (language="comment", text=
+        " Vertical distance between from top/bottom border or center, depending on alignment")
+      int32 vertical_distance;
+
+      @verbatim (language="comment", text=
+        " Alignment of the overlay withing RVIZ" "\n"
+        " one of LEFT, CENTER, RIGHT")
+      uint8 horizontal_alignment;
+
+      @verbatim (language="comment", text=
+        " one of TOP, CENTER, BOTTOM")
+      uint8 vertical_alignment;
+
+      std_msgs::msg::ColorRGBA bg_color;
+
+      int32 line_width;
+
+      float text_size;
+
+      string font;
+
+      std_msgs::msg::ColorRGBA fg_color;
+
+      string text;
+    };
+  };
+};

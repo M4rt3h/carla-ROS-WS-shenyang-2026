@@ -1,0 +1,12 @@
+{
+  "package_name": "derived_object_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/derived_object_msgs:msg/Lane.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/derived_object_msgs:msg/LaneModels.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/derived_object_msgs:msg/Object.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/derived_object_msgs:msg/ObjectArray.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/derived_object_msgs:msg/ObjectWithCovariance.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/derived_object_msgs:msg/ObjectWithCovarianceArray.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/derived_object_msgs:msg/SolidPrimitiveWithCovariance.msg"
+  ]
+}

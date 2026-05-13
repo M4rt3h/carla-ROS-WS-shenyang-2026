@@ -1,0 +1,22 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ibeo_msgs/msg/MountingPositionF.msg
+// generated code does not contain a copyright notice
+
+
+module ibeo_msgs {
+  module msg {
+    struct MountingPositionF {
+      float yaw_angle;
+
+      float pitch_angle;
+
+      float roll_angle;
+
+      float x_position;
+
+      float y_position;
+
+      float z_position;
+    };
+  };
+};

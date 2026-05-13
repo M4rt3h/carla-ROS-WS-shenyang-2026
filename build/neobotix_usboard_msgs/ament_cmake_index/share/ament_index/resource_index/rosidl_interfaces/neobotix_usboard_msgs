@@ -1,0 +1,16 @@
+msg/AnalogIn.idl
+msg/AnalogIn.msg
+msg/AnsParasetToEEPROM.idl
+msg/AnsParasetToEEPROM.msg
+msg/AnsToCmdConnect.idl
+msg/AnsToCmdConnect.msg
+msg/AnsWriteParaset.idl
+msg/AnsWriteParaset.msg
+msg/Command.idl
+msg/Command.msg
+msg/Paraset.idl
+msg/Paraset.msg
+msg/SensorData.idl
+msg/SensorData.msg
+msg/Sensors.idl
+msg/Sensors.msg

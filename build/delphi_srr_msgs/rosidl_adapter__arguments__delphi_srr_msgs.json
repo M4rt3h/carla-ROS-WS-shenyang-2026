@@ -1,0 +1,16 @@
+{
+  "package_name": "delphi_srr_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrDebug3.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrDebug4.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrDebug5.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrFeatureAlert.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrFeatureSwVersion.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrStatus1.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrStatus2.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrStatus3.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrStatus4.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrStatus5.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/delphi_srr_msgs:msg/SrrTrack.msg"
+  ]
+}

@@ -1,0 +1,35 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/aftermarket_lane__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/ahbc__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/ahbc_gradual__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/aws_display__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/fixed_foe__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/lane__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/lka_lane__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/lka_num_of_next_lane_markers_reported__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/lka_reference_points__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/obstacle_data__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/obstacle_status__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/tsr__type_support.cpp.o"
+  "CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/mobileye_560_660_msgs/msg/tsr_vision_only__type_support.cpp.o"
+  "libmobileye_560_660_msgs__rosidl_typesupport_c.pdb"
+  "libmobileye_560_660_msgs__rosidl_typesupport_c.so"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/aftermarket_lane__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/ahbc__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/ahbc_gradual__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/aws_display__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/fixed_foe__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/lane__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/lka_lane__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/lka_num_of_next_lane_markers_reported__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/lka_reference_points__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/obstacle_data__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/obstacle_status__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/tsr__type_support.cpp"
+  "rosidl_typesupport_c/mobileye_560_660_msgs/msg/tsr_vision_only__type_support.cpp"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/mobileye_560_660_msgs__rosidl_typesupport_c.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

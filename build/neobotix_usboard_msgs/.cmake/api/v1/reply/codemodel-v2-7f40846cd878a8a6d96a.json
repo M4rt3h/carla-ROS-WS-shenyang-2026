@@ -1,0 +1,213 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15
+					]
+				},
+				{
+					"build" : "neobotix_usboard_msgs__py",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/neobotix_usboard_msgs/neobotix_usboard_msgs__py",
+					"targetIndexes" : 
+					[
+						2
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1
+					],
+					"name" : "neobotix_usboard_msgs",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs-038aa309ce6ada5de67b.json",
+					"name" : "neobotix_usboard_msgs",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__cpp-075bbcc843a3f7c055ab.json",
+					"name" : "neobotix_usboard_msgs__cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "neobotix_usboard_msgs__py::@8325dea35b088b14f76a",
+					"jsonFile" : "target-neobotix_usboard_msgs__py-ec56581f9be1e446459f.json",
+					"name" : "neobotix_usboard_msgs__py",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__python::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__python-e98913ec64a2dfe3d747.json",
+					"name" : "neobotix_usboard_msgs__python",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_generator_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_generator_c-87f3468ccbdafdb9a14f.json",
+					"name" : "neobotix_usboard_msgs__rosidl_generator_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_c-8b73ded9383be9d808f7.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_c__pyext::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_c__pyext-f54d47c00165c1e1af98.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_c__pyext",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_cpp-f03abddfb993089daa11.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_fastrtps_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_fastrtps_c-4df8e3f3915de1d3acb5.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_fastrtps_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_fastrtps_c__pyext::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_fastrtps_c__pyext-72099baf4beab9979036.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_fastrtps_c__pyext",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_fastrtps_cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_fastrtps_cpp-bd73b634243379503698.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_fastrtps_cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_introspection_c::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_introspection_c-b7a2f621d2a7b996a15b.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_introspection_c",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_introspection_c__pyext::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_introspection_c__pyext-755add17a7fd9d879847.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_introspection_c__pyext",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs__rosidl_typesupport_introspection_cpp::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs__rosidl_typesupport_introspection_cpp-2bf3dcab78eb4290457b.json",
+					"name" : "neobotix_usboard_msgs__rosidl_typesupport_introspection_cpp",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "neobotix_usboard_msgs_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-neobotix_usboard_msgs_uninstall-c27f797bd02808de98e4.json",
+					"name" : "neobotix_usboard_msgs_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-bad2a91693e35ebb7cf1.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/neobotix_usboard_msgs",
+		"source" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/astuff_sensor_msgs/neobotix_usboard_msgs"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 0
+	}
+}

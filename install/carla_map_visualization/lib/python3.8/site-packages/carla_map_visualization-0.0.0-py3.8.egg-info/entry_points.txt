@@ -1,0 +1,3 @@
+[console_scripts]
+carla_map_visualization = carla_map_visualization.carla_map_visualization:main
+

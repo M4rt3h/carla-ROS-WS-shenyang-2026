@@ -1,0 +1,31 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_debug3__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_debug4__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_debug5__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_feature_alert__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_feature_sw_version__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status1__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status2__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status3__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status4__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status5__type_support.cpp.o"
+  "CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/delphi_srr_msgs/msg/srr_track__type_support.cpp.o"
+  "libdelphi_srr_msgs__rosidl_typesupport_c.pdb"
+  "libdelphi_srr_msgs__rosidl_typesupport_c.so"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_debug3__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_debug4__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_debug5__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_feature_alert__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_feature_sw_version__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status1__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status2__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status3__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status4__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_status5__type_support.cpp"
+  "rosidl_typesupport_c/delphi_srr_msgs/msg/srr_track__type_support.cpp"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/delphi_srr_msgs__rosidl_typesupport_c.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

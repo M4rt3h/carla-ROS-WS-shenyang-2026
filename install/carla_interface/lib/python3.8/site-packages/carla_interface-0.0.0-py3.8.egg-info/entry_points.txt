@@ -1,0 +1,4 @@
+[console_scripts]
+my_node = carla_interface.my_first_node:main
+trajectory_node = carla_interface.inference_trajectoire_node:main
+

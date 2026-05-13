@@ -1,0 +1,24 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ibeo_msgs/msg/ObjectData2225.msg
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+#include "ibeo_msgs/msg/IbeoDataHeader.idl"
+#include "ibeo_msgs/msg/Object2225.idl"
+#include "std_msgs/msg/Header.idl"
+
+module ibeo_msgs {
+  module msg {
+    struct ObjectData2225 {
+      std_msgs::msg::Header header;
+
+      ibeo_msgs::msg::IbeoDataHeader ibeo_header;
+
+      builtin_interfaces::msg::Time mid_scan_timestamp;
+
+      uint16 number_of_objects;
+
+      sequence<ibeo_msgs::msg::Object2225> object_list;
+    };
+  };
+};

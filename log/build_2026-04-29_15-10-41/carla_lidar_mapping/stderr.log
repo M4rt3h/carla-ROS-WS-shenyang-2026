@@ -1,0 +1,27 @@
+** WARNING ** io features related to openni will be disabled
+** WARNING ** io features related to openni2 will be disabled
+** WARNING ** io features related to pcap will be disabled
+** WARNING ** io features related to png will be disabled
+** WARNING ** io features related to libusb-1.0 will be disabled
+** WARNING ** visualization features related to openni will be disabled
+** WARNING ** visualization features related to openni2 will be disabled
+** WARNING ** apps features related to openni will be disabled
+In file included from [01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/src/lidar_mapping.cpp:1[m[K:
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/include/carla_lidar_mapping/lidar_mapping.hpp:[m[K In constructor ‘[01m[Kcarla_lidar_mapping::Rotate::Rotate()[m[K’:
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/include/carla_lidar_mapping/lidar_mapping.hpp:51:25:[m[K [01;35m[Kwarning: [m[K‘[01m[Kcarla_lidar_mapping::Rotate::yaw[m[K’ will be initialized after [[01;35m[K-Wreorder[m[K]
+   51 |     double roll, pitch, [01;35m[Kyaw[m[K;
+      |                         [01;35m[K^~~[m[K
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/include/carla_lidar_mapping/lidar_mapping.hpp:51:18:[m[K [01;35m[Kwarning: [m[K  ‘[01m[Kdouble carla_lidar_mapping::Rotate::pitch[m[K’ [[01;35m[K-Wreorder[m[K]
+   51 |     double roll, [01;35m[Kpitch[m[K, yaw;
+      |                  [01;35m[K^~~~~[m[K
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/include/carla_lidar_mapping/lidar_mapping.hpp:53:5:[m[K [01;35m[Kwarning: [m[K  when initialized here [[01;35m[K-Wreorder[m[K]
+   53 |     [01;35m[KRotate[m[K() : roll(0), yaw(0), pitch(0) {}
+      |     [01;35m[K^~~~~~[m[K
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/src/lidar_mapping.cpp:[m[K In member function ‘[01m[Kvoid carla_lidar_mapping::LidarMapping::scanTransformation(pcl::PointCloud<pcl::PointXYZ>::Ptr)[m[K’:
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/src/lidar_mapping.cpp:136:38:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: ‘[01m[Kstd::vector<pcl::PointXYZ, Eigen::aligned_allocator<pcl::PointXYZ> >::size_type[m[K’ {aka ‘[01m[Klong unsigned int[m[K’} and ‘[01m[Kint[m[K’ [[01;35m[K-Wsign-compare[m[K]
+  136 |         if ([01;35m[Kpcl_cloud_.points.size() > cloud_resolution_[m[K)
+      |             [01;35m[K~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~[m[K
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/src/lidar_mapping.cpp:[m[K In member function ‘[01m[Kdouble carla_lidar_mapping::LidarMapping::minDistance(carla_lidar_mapping::Point, std::vector<carla_lidar_mapping::Point>)[m[K’:
+[01m[K/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_lidar_mapping/src/lidar_mapping.cpp:209:39:[m[K [01;35m[Kwarning: [m[Kcomparison of integer expressions of different signedness: ‘[01m[Kint[m[K’ and ‘[01m[Kstd::vector<carla_lidar_mapping::Point>::size_type[m[K’ {aka ‘[01m[Klong unsigned int[m[K’} [[01;35m[K-Wsign-compare[m[K]
+  209 |             for (int index = 1; [01;35m[Kindex < points.size()[m[K; index++)
+      |                                 [01;35m[K~~~~~~^~~~~~~~~~~~~~~[m[K

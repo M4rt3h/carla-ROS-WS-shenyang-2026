@@ -1,0 +1,28 @@
+[0.617s] Invoking command in '/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_interface': CONDA_PROMPT_MODIFIER=(carla_env) PYTHONPATH=/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/carla_interface build --build-base /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build install --record /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/install.log --single-version-externally-managed install_data
+[0.840s] running egg_info
+[0.841s] writing ../build/carla_interface/carla_interface.egg-info/PKG-INFO
+[0.846s] writing dependency_links to ../build/carla_interface/carla_interface.egg-info/dependency_links.txt
+[0.846s] writing entry points to ../build/carla_interface/carla_interface.egg-info/entry_points.txt
+[0.846s] writing requirements to ../build/carla_interface/carla_interface.egg-info/requires.txt
+[0.846s] writing top-level names to ../build/carla_interface/carla_interface.egg-info/top_level.txt
+[0.897s] reading manifest file '../build/carla_interface/carla_interface.egg-info/SOURCES.txt'
+[0.898s] writing manifest file '../build/carla_interface/carla_interface.egg-info/SOURCES.txt'
+[0.899s] running build
+[0.899s] running build_py
+[0.900s] copying carla_interface/classes.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+[0.902s] copying carla_interface/inference_trajectoire_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface
+[0.904s] running install
+[0.904s] running install_lib
+[0.906s] copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/classes.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+[0.906s] copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build/lib/carla_interface/inference_trajectoire_node.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface
+[0.908s] byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/classes.py to classes.cpython-38.pyc
+[0.912s] byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface/inference_trajectoire_node.py to inference_trajectoire_node.cpython-38.pyc
+[0.915s] running install_data
+[0.915s] running install_egg_info
+[0.918s] removing '/home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface-0.0.0-py3.8.egg-info' (and everything under it)
+[0.920s] Copying ../build/carla_interface/carla_interface.egg-info to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages/carla_interface-0.0.0-py3.8.egg-info
+[0.923s] running install_scripts
+[1.014s] Installing my_node script to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/carla_interface
+[1.080s] Installing trajectory_node script to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/carla_interface
+[1.090s] writing list of installed files to '/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/install.log'
+[1.118s] Invoked command in '/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_interface' returned '0': CONDA_PROMPT_MODIFIER=(carla_env) PYTHONPATH=/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_interface/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/carla_interface build --build-base /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/build install --record /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_interface/install.log --single-version-externally-managed install_data

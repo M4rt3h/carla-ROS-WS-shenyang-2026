@@ -1,0 +1,30 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/lane__type_support_c.cpp.o"
+  "CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/lane_models__type_support_c.cpp.o"
+  "CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object__type_support_c.cpp.o"
+  "CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_array__type_support_c.cpp.o"
+  "CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_with_covariance__type_support_c.cpp.o"
+  "CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_with_covariance_array__type_support_c.cpp.o"
+  "CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/solid_primitive_with_covariance__type_support_c.cpp.o"
+  "libderived_object_msgs__rosidl_typesupport_fastrtps_c.pdb"
+  "libderived_object_msgs__rosidl_typesupport_fastrtps_c.so"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/lane__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/lane__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/lane_models__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/lane_models__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_array__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_array__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_with_covariance__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_with_covariance__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_with_covariance_array__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/object_with_covariance_array__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/solid_primitive_with_covariance__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/derived_object_msgs/msg/detail/solid_primitive_with_covariance__type_support_c.cpp"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/derived_object_msgs__rosidl_typesupport_fastrtps_c.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

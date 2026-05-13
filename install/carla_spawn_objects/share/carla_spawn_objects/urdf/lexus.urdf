@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<robot name="car">
+  <link name="hero">
+    <visual name="hero_visual">
+      <origin xyz="0.0 0.0 0.0" rpy="1.57 0 3.14" />
+      <geometry>
+        <mesh filename="package://carla_spawn_objects/mesh/lexus.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </visual>
+  </link>
+</robot>

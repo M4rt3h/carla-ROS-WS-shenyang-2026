@@ -1,0 +1,27 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from delphi_mrr_msgs/msg/MrrControlMsgNR.msg
+// generated code does not contain a copyright notice
+
+#include "std_msgs/msg/Header.idl"
+
+module delphi_mrr_msgs {
+  module msg {
+    struct MrrControlMsgNR {
+      std_msgs::msg::Header header;
+
+      uint16 can_stop_frequency_nrml;
+
+      uint16 can_prp_factor_nrml;
+
+      uint8 can_desired_sweep_bw_nrml;
+
+      boolean can_radiation_ctrl;
+
+      uint16 can_stop_frequency_nrll;
+
+      uint16 can_prp_factor_nrll;
+
+      uint8 can_desired_sweep_bw_nrll;
+    };
+  };
+};

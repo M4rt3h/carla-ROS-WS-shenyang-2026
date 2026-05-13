@@ -1,0 +1,25 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from kartech_linear_actuator_msgs/msg/PriorityConfigCmd.msg
+// generated code does not contain a copyright notice
+
+#include "std_msgs/msg/Header.idl"
+
+module kartech_linear_actuator_msgs {
+  module msg {
+    struct PriorityConfigCmd {
+      std_msgs::msg::Header header;
+
+      boolean confirm;
+
+      @verbatim (language="comment", text=
+        " Priority values for different types of reports. Lower value = higher priority.")
+      uint8 handshake_priority;
+
+      uint8 auto_reply_priority;
+
+      uint8 scheduled_priority;
+
+      uint8 polled_priority;
+    };
+  };
+};

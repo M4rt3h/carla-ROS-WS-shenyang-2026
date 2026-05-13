@@ -1,0 +1,87 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.5"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"name" : "",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "rviz_carla_plugin",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "rviz_carla_plugin::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-rviz_carla_plugin-aabb22e47880cea78757.json",
+					"name" : "rviz_carla_plugin",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "rviz_carla_plugin_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-rviz_carla_plugin_autogen-287247b2ca01b8cd2155.json",
+					"name" : "rviz_carla_plugin_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "rviz_carla_plugin_uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-rviz_carla_plugin_uninstall-a1adc15b77140ecd3518.json",
+					"name" : "rviz_carla_plugin_uninstall",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "uninstall::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-uninstall-47cf4a827465e205d815.json",
+					"name" : "uninstall",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/rviz_carla_plugin",
+		"source" : "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/rviz_carla_plugin"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 0
+	}
+}

@@ -1,0 +1,301 @@
+// generated from rosidl_generator_c/resource/idl__functions.c.em
+// with input from ibeo_msgs:msg/ScanPoint2204.idl
+// generated code does not contain a copyright notice
+#include "ibeo_msgs/msg/detail/scan_point2204__functions.h"
+
+#include <assert.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+
+
+bool
+ibeo_msgs__msg__ScanPoint2204__init(ibeo_msgs__msg__ScanPoint2204 * msg)
+{
+  if (!msg) {
+    return false;
+  }
+  // x_position
+  // y_position
+  // z_position
+  // echo_width
+  // device_id
+  // layer
+  // echo
+  // time_offset
+  // ground
+  // dirt
+  // precipitation
+  return true;
+}
+
+void
+ibeo_msgs__msg__ScanPoint2204__fini(ibeo_msgs__msg__ScanPoint2204 * msg)
+{
+  if (!msg) {
+    return;
+  }
+  // x_position
+  // y_position
+  // z_position
+  // echo_width
+  // device_id
+  // layer
+  // echo
+  // time_offset
+  // ground
+  // dirt
+  // precipitation
+}
+
+bool
+ibeo_msgs__msg__ScanPoint2204__are_equal(const ibeo_msgs__msg__ScanPoint2204 * lhs, const ibeo_msgs__msg__ScanPoint2204 * rhs)
+{
+  if (!lhs || !rhs) {
+    return false;
+  }
+  // x_position
+  if (lhs->x_position != rhs->x_position) {
+    return false;
+  }
+  // y_position
+  if (lhs->y_position != rhs->y_position) {
+    return false;
+  }
+  // z_position
+  if (lhs->z_position != rhs->z_position) {
+    return false;
+  }
+  // echo_width
+  if (lhs->echo_width != rhs->echo_width) {
+    return false;
+  }
+  // device_id
+  if (lhs->device_id != rhs->device_id) {
+    return false;
+  }
+  // layer
+  if (lhs->layer != rhs->layer) {
+    return false;
+  }
+  // echo
+  if (lhs->echo != rhs->echo) {
+    return false;
+  }
+  // time_offset
+  if (lhs->time_offset != rhs->time_offset) {
+    return false;
+  }
+  // ground
+  if (lhs->ground != rhs->ground) {
+    return false;
+  }
+  // dirt
+  if (lhs->dirt != rhs->dirt) {
+    return false;
+  }
+  // precipitation
+  if (lhs->precipitation != rhs->precipitation) {
+    return false;
+  }
+  return true;
+}
+
+bool
+ibeo_msgs__msg__ScanPoint2204__copy(
+  const ibeo_msgs__msg__ScanPoint2204 * input,
+  ibeo_msgs__msg__ScanPoint2204 * output)
+{
+  if (!input || !output) {
+    return false;
+  }
+  // x_position
+  output->x_position = input->x_position;
+  // y_position
+  output->y_position = input->y_position;
+  // z_position
+  output->z_position = input->z_position;
+  // echo_width
+  output->echo_width = input->echo_width;
+  // device_id
+  output->device_id = input->device_id;
+  // layer
+  output->layer = input->layer;
+  // echo
+  output->echo = input->echo;
+  // time_offset
+  output->time_offset = input->time_offset;
+  // ground
+  output->ground = input->ground;
+  // dirt
+  output->dirt = input->dirt;
+  // precipitation
+  output->precipitation = input->precipitation;
+  return true;
+}
+
+ibeo_msgs__msg__ScanPoint2204 *
+ibeo_msgs__msg__ScanPoint2204__create()
+{
+  ibeo_msgs__msg__ScanPoint2204 * msg = (ibeo_msgs__msg__ScanPoint2204 *)malloc(sizeof(ibeo_msgs__msg__ScanPoint2204));
+  if (!msg) {
+    return NULL;
+  }
+  memset(msg, 0, sizeof(ibeo_msgs__msg__ScanPoint2204));
+  bool success = ibeo_msgs__msg__ScanPoint2204__init(msg);
+  if (!success) {
+    free(msg);
+    return NULL;
+  }
+  return msg;
+}
+
+void
+ibeo_msgs__msg__ScanPoint2204__destroy(ibeo_msgs__msg__ScanPoint2204 * msg)
+{
+  if (msg) {
+    ibeo_msgs__msg__ScanPoint2204__fini(msg);
+  }
+  free(msg);
+}
+
+
+bool
+ibeo_msgs__msg__ScanPoint2204__Sequence__init(ibeo_msgs__msg__ScanPoint2204__Sequence * array, size_t size)
+{
+  if (!array) {
+    return false;
+  }
+  ibeo_msgs__msg__ScanPoint2204 * data = NULL;
+  if (size) {
+    data = (ibeo_msgs__msg__ScanPoint2204 *)calloc(size, sizeof(ibeo_msgs__msg__ScanPoint2204));
+    if (!data) {
+      return false;
+    }
+    // initialize all array elements
+    size_t i;
+    for (i = 0; i < size; ++i) {
+      bool success = ibeo_msgs__msg__ScanPoint2204__init(&data[i]);
+      if (!success) {
+        break;
+      }
+    }
+    if (i < size) {
+      // if initialization failed finalize the already initialized array elements
+      for (; i > 0; --i) {
+        ibeo_msgs__msg__ScanPoint2204__fini(&data[i - 1]);
+      }
+      free(data);
+      return false;
+    }
+  }
+  array->data = data;
+  array->size = size;
+  array->capacity = size;
+  return true;
+}
+
+void
+ibeo_msgs__msg__ScanPoint2204__Sequence__fini(ibeo_msgs__msg__ScanPoint2204__Sequence * array)
+{
+  if (!array) {
+    return;
+  }
+  if (array->data) {
+    // ensure that data and capacity values are consistent
+    assert(array->capacity > 0);
+    // finalize all array elements
+    for (size_t i = 0; i < array->capacity; ++i) {
+      ibeo_msgs__msg__ScanPoint2204__fini(&array->data[i]);
+    }
+    free(array->data);
+    array->data = NULL;
+    array->size = 0;
+    array->capacity = 0;
+  } else {
+    // ensure that data, size, and capacity values are consistent
+    assert(0 == array->size);
+    assert(0 == array->capacity);
+  }
+}
+
+ibeo_msgs__msg__ScanPoint2204__Sequence *
+ibeo_msgs__msg__ScanPoint2204__Sequence__create(size_t size)
+{
+  ibeo_msgs__msg__ScanPoint2204__Sequence * array = (ibeo_msgs__msg__ScanPoint2204__Sequence *)malloc(sizeof(ibeo_msgs__msg__ScanPoint2204__Sequence));
+  if (!array) {
+    return NULL;
+  }
+  bool success = ibeo_msgs__msg__ScanPoint2204__Sequence__init(array, size);
+  if (!success) {
+    free(array);
+    return NULL;
+  }
+  return array;
+}
+
+void
+ibeo_msgs__msg__ScanPoint2204__Sequence__destroy(ibeo_msgs__msg__ScanPoint2204__Sequence * array)
+{
+  if (array) {
+    ibeo_msgs__msg__ScanPoint2204__Sequence__fini(array);
+  }
+  free(array);
+}
+
+bool
+ibeo_msgs__msg__ScanPoint2204__Sequence__are_equal(const ibeo_msgs__msg__ScanPoint2204__Sequence * lhs, const ibeo_msgs__msg__ScanPoint2204__Sequence * rhs)
+{
+  if (!lhs || !rhs) {
+    return false;
+  }
+  if (lhs->size != rhs->size) {
+    return false;
+  }
+  for (size_t i = 0; i < lhs->size; ++i) {
+    if (!ibeo_msgs__msg__ScanPoint2204__are_equal(&(lhs->data[i]), &(rhs->data[i]))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool
+ibeo_msgs__msg__ScanPoint2204__Sequence__copy(
+  const ibeo_msgs__msg__ScanPoint2204__Sequence * input,
+  ibeo_msgs__msg__ScanPoint2204__Sequence * output)
+{
+  if (!input || !output) {
+    return false;
+  }
+  if (output->capacity < input->size) {
+    const size_t allocation_size =
+      input->size * sizeof(ibeo_msgs__msg__ScanPoint2204);
+    ibeo_msgs__msg__ScanPoint2204 * data =
+      (ibeo_msgs__msg__ScanPoint2204 *)realloc(output->data, allocation_size);
+    if (!data) {
+      return false;
+    }
+    for (size_t i = output->capacity; i < input->size; ++i) {
+      if (!ibeo_msgs__msg__ScanPoint2204__init(&data[i])) {
+        /* free currently allocated and return false */
+        for (; i-- > output->capacity; ) {
+          ibeo_msgs__msg__ScanPoint2204__fini(&data[i]);
+        }
+        free(data);
+        return false;
+      }
+    }
+    output->data = data;
+    output->capacity = input->size;
+  }
+  output->size = input->size;
+  for (size_t i = 0; i < input->size; ++i) {
+    if (!ibeo_msgs__msg__ScanPoint2204__copy(
+        &(input->data[i]), &(output->data[i])))
+    {
+      return false;
+    }
+  }
+  return true;
+}

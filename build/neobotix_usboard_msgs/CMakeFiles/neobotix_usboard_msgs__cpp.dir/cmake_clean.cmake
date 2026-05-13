@@ -1,0 +1,40 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/neobotix_usboard_msgs__cpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/analog_in.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/ans_paraset_to_eeprom.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/ans_to_cmd_connect.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/ans_write_paraset.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/command.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/analog_in__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/analog_in__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/analog_in__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_paraset_to_eeprom__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_paraset_to_eeprom__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_paraset_to_eeprom__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_to_cmd_connect__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_to_cmd_connect__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_to_cmd_connect__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_write_paraset__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_write_paraset__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/ans_write_paraset__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/command__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/command__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/command__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/paraset__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/paraset__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/paraset__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/sensor_data__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/sensor_data__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/sensor_data__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/sensors__builder.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/sensors__struct.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/detail/sensors__traits.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/paraset.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/sensor_data.hpp"
+  "rosidl_generator_cpp/neobotix_usboard_msgs/msg/sensors.hpp"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang )
+  include(CMakeFiles/neobotix_usboard_msgs__cpp.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

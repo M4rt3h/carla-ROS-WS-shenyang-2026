@@ -1,0 +1,53 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from ibeo_msgs/msg/HostVehicleState2807.msg
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+#include "ibeo_msgs/msg/IbeoDataHeader.idl"
+#include "std_msgs/msg/Header.idl"
+
+module ibeo_msgs {
+  module msg {
+    struct HostVehicleState2807 {
+      std_msgs::msg::Header header;
+
+      ibeo_msgs::msg::IbeoDataHeader ibeo_header;
+
+      builtin_interfaces::msg::Time timestamp;
+
+      int32 distance_x;
+
+      int32 distance_y;
+
+      float course_angle;
+
+      float longitudinal_velocity;
+
+      float yaw_rate;
+
+      float steering_wheel_angle;
+
+      float cross_acceleration;
+
+      float front_wheel_angle;
+
+      float vehicle_width;
+
+      float vehicle_front_to_front_axle;
+
+      float rear_axle_to_front_axle;
+
+      float rear_axle_to_vehicle_rear;
+
+      float steer_ratio_poly_0;
+
+      float steer_ratio_poly_1;
+
+      float steer_ratio_poly_2;
+
+      float steer_ratio_poly_3;
+
+      float longitudinal_acceleration;
+    };
+  };
+};

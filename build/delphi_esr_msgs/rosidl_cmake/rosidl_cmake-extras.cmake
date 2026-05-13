@@ -1,0 +1,4 @@
+# generated from rosidl_cmake/cmake/rosidl_cmake-extras.cmake.in
+
+set(delphi_esr_msgs_IDL_FILES "msg/EsrEthTx.idl;msg/EsrStatus1.idl;msg/EsrStatus2.idl;msg/EsrStatus3.idl;msg/EsrStatus4.idl;msg/EsrStatus5.idl;msg/EsrStatus6.idl;msg/EsrStatus7.idl;msg/EsrStatus8.idl;msg/EsrStatus9.idl;msg/EsrTrack.idl;msg/EsrTrackMotionPowerTrack.idl;msg/EsrTrackMotionPowerGroup.idl;msg/EsrValid1.idl;msg/EsrValid2.idl;msg/EsrVehicle1.idl;msg/EsrVehicle2.idl;msg/EsrVehicle3.idl;msg/EsrVehicle4.idl;msg/EsrVehicle5.idl")
+set(delphi_esr_msgs_INTERFACE_FILES "msg/EsrEthTx.msg;msg/EsrStatus1.msg;msg/EsrStatus2.msg;msg/EsrStatus3.msg;msg/EsrStatus4.msg;msg/EsrStatus5.msg;msg/EsrStatus6.msg;msg/EsrStatus7.msg;msg/EsrStatus8.msg;msg/EsrStatus9.msg;msg/EsrTrack.msg;msg/EsrTrackMotionPowerTrack.msg;msg/EsrTrackMotionPowerGroup.msg;msg/EsrValid1.msg;msg/EsrValid2.msg;msg/EsrVehicle1.msg;msg/EsrVehicle2.msg;msg/EsrVehicle3.msg;msg/EsrVehicle4.msg;msg/EsrVehicle5.msg")

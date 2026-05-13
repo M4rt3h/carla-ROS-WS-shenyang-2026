@@ -1,0 +1,22 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from delphi_esr_msgs/msg/EsrTrackMotionPowerTrack.msg
+// generated code does not contain a copyright notice
+
+
+module delphi_esr_msgs {
+  module msg {
+    @verbatim (language="comment", text=
+      " ESR TrackMotionPower, track-specific information")
+    struct EsrTrackMotionPowerTrack {
+      uint8 id;
+
+      boolean movable_fast;
+
+      boolean movable_slow;
+
+      boolean moving;
+
+      int8 power;
+    };
+  };
+};

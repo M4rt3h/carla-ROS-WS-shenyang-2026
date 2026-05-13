@@ -1,0 +1,4 @@
+source;share/ibeo_msgs/local_setup.bash
+source;share/ibeo_msgs/local_setup.dsv
+source;share/ibeo_msgs/local_setup.sh
+source;share/ibeo_msgs/local_setup.zsh

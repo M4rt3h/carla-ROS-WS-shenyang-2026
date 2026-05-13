@@ -1,0 +1,28 @@
+{
+  "package_name": "carla_msgs",
+  "non_idl_tuples": [
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaBoundingBox.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaEgoVehicleControl.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaEgoVehicleStatus.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaEgoVehicleInfoWheel.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaEgoVehicleInfo.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaCollisionEvent.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaLaneInvasionEvent.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaWorldInfo.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaActorInfo.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaActorList.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaControl.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaStatus.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaTrafficLightInfo.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaTrafficLightInfoList.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaTrafficLightStatus.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaTrafficLightStatusList.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaWalkerControl.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaWeatherParameters.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaReferencePoint.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:msg/CarlaReferenceLine.msg",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:srv/SpawnObject.srv",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:srv/DestroyObject.srv",
+    "/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla-ros-bridge/carla_msgs:srv/GetBlueprints.srv"
+  ]
+}

@@ -1,0 +1,41 @@
+[1.664s] Invoking command in '/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_map_visualization': PYTHONPATH=/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/carla_map_visualization build --build-base /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build install --record /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/install.log --single-version-externally-managed install_data
+[2.279s] running egg_info
+[2.279s] creating ../build/carla_map_visualization/carla_map_visualization.egg-info
+[2.279s] writing ../build/carla_map_visualization/carla_map_visualization.egg-info/PKG-INFO
+[2.279s] writing dependency_links to ../build/carla_map_visualization/carla_map_visualization.egg-info/dependency_links.txt
+[2.279s] writing entry points to ../build/carla_map_visualization/carla_map_visualization.egg-info/entry_points.txt
+[2.279s] writing requirements to ../build/carla_map_visualization/carla_map_visualization.egg-info/requires.txt
+[2.279s] writing top-level names to ../build/carla_map_visualization/carla_map_visualization.egg-info/top_level.txt
+[2.279s] writing manifest file '../build/carla_map_visualization/carla_map_visualization.egg-info/SOURCES.txt'
+[2.279s] reading manifest file '../build/carla_map_visualization/carla_map_visualization.egg-info/SOURCES.txt'
+[2.279s] writing manifest file '../build/carla_map_visualization/carla_map_visualization.egg-info/SOURCES.txt'
+[2.279s] running build
+[2.279s] running build_py
+[2.279s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build
+[2.279s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build/lib
+[2.279s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build/lib/carla_map_visualization
+[2.280s] copying carla_map_visualization/carla_map_visualization.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build/lib/carla_map_visualization
+[2.280s] copying carla_map_visualization/__init__.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build/lib/carla_map_visualization
+[2.280s] running install
+[2.280s] running install_lib
+[2.280s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages/carla_map_visualization
+[2.280s] copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build/lib/carla_map_visualization/carla_map_visualization.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages/carla_map_visualization
+[2.280s] copying /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build/lib/carla_map_visualization/__init__.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages/carla_map_visualization
+[2.280s] byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages/carla_map_visualization/carla_map_visualization.py to carla_map_visualization.cpython-38.pyc
+[2.280s] byte-compiling /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages/carla_map_visualization/__init__.py to __init__.cpython-38.pyc
+[2.280s] running install_data
+[2.280s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/ament_index
+[2.280s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/ament_index/resource_index
+[2.280s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/ament_index/resource_index/packages
+[2.280s] copying resource/carla_map_visualization -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/ament_index/resource_index/packages
+[2.281s] copying package.xml -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/carla_map_visualization
+[2.281s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/carla_map_visualization/launch
+[2.281s] copying launch/map_visualization.launch.py -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/carla_map_visualization/launch
+[2.281s] creating /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/carla_map_visualization/rviz
+[2.281s] copying rviz/carla_map_vis.rviz -> /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/share/carla_map_visualization/rviz
+[2.281s] running install_egg_info
+[2.281s] Copying ../build/carla_map_visualization/carla_map_visualization.egg-info to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages/carla_map_visualization-0.0.0-py3.8.egg-info
+[2.281s] running install_scripts
+[2.281s] Installing carla_map_visualization script to /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/carla_map_visualization
+[2.281s] writing list of installed files to '/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/install.log'
+[2.306s] Invoked command in '/home/martin/Desktop/Stage/Projet/ws_carla_ros/carla_map_visualization' returned '0': PYTHONPATH=/home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_map_visualization/lib/python3.8/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../build/carla_map_visualization build --build-base /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/build install --record /home/martin/Desktop/Stage/Projet/ws_carla_ros/build/carla_map_visualization/install.log --single-version-externally-managed install_data

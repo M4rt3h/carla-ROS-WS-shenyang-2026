@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcarla_lqr_control.a  CMakeFiles/carla_lqr_control.dir/src/lqr_controller.cpp.o
+/usr/bin/ranlib libcarla_lqr_control.a
