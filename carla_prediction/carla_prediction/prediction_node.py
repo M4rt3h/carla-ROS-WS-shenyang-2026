@@ -143,7 +143,7 @@ class CarlaPredictionNode(Node):
 
         #  Subscribers 
         self.create_subscription(
-            Odometry, '/carla/ego_vehicle/odometry', self.odom_callback, 10)
+            Odometry, '/carla/hero/odometry', self.odom_callback, 10)
 
         if _HAS_OBJ_MSG:
             self.create_subscription(

@@ -143,7 +143,7 @@ class CarlaPredictionNode(Node):
 
         #  Subscribers 
         self.create_subscription(
-            Odometry, '/carla/ego_vehicle/odometry', self.odom_callback, 10)
+            Odometry, '/carla/hero/odometry', self.odom_callback, 10)
 
         if _HAS_OBJ_MSG:
             self.create_subscription(
@@ -159,6 +159,7 @@ class CarlaPredictionNode(Node):
     #  Callback odométrie 
     def odom_callback(self, msg: Odometry):
         """Stocke l'état ego brut à 20 Hz. Conversion ROS → CARLA (inversion Y)."""
+        self.get_logger().info('odom reçu', throttle_duration_sec=2.0)
         self.frame_count += 1
 
         pos = msg.pose.pose.position

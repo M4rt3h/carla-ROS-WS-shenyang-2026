@@ -2,7 +2,7 @@ carla_prediction_node:
   ros__parameters:
     model_ckpt: ""                          # à remplir : chemin absolu vers le .ckpt
     config_path: ""                         # défaut : CarlaPrediction/config.yaml
-    osm_path: ""                            # défaut : CarlaPrediction/data/maps/Town03.osm
+    osm_path: "/home/martin/Desktop/CarlaPrediction/map_data/osm/Town03.osm"       
     publish_hz: 2.0                         # fréquence d'inférence (Hz)
     past_frames: 5                          # frames d'historique pour le modèle
     raw_fps: 20                             # fréquence brute du bridge CARLA
