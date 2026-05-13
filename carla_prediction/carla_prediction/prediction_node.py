@@ -308,7 +308,11 @@ class CarlaPredictionNode(Node):
             'agents_past_mask':     t(agents_mask),                 # [1, 10, 5]
             'agent_type':           t(agent_types.astype(np.float32)),  # [1, 10]
             'lane':                 t(map_data['lane']),            # [1, 50, 19, 5]
-            'lane_avail':           t(map_data['lane_avail'].astype(np.float32)),  # [1, 50, 19]
+            'lane_avail':           t(map_data['lane_avail'].astype(bool)),  # [1, 50, 19]
+            'ego_future_poses':     torch.zeros(1, 12, 3,     device=self.device),
+            'agents_future_poses':  torch.zeros(1, 10, 12, 3, device=self.device),
+            'ego_future_mask':      torch.zeros(1, 12,         dtype=torch.bool, device=self.device),
+            'agents_future_mask':   torch.zeros(1, 10, 12,     dtype=torch.bool, device=self.device),
         }
 
         #  8. Inférence 
