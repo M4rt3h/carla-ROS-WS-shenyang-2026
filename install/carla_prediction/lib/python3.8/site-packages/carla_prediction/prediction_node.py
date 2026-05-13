@@ -24,24 +24,21 @@ from visualization_msgs.msg import MarkerArray, Marker
 from geometry_msgs.msg import Point
 from builtin_interfaces.msg import Duration
 
-# ── CARLA egg ────────────────────────────────────────────────────────────────
-_CARLA_EGG = Path.home() / (
-    'Desktop/Stage/Documents fournis/Carla/'
-    'CARLA_0.9.13/PythonAPI/carla/dist/'
-    'carla-0.9.13-py3.7-linux-x86_64.egg'
-)
-if _CARLA_EGG.exists() and str(_CARLA_EGG) not in sys.path:
-    sys.path.append(str(_CARLA_EGG))
 
-# ── derived_object_msgs (optionnel au build, requis au runtime) ───────────────
+_CARLA_PRED = Path.home() / 'Desktop/CarlaPrediction'
+for _p in [_CARLA_PRED, _CARLA_PRED / 'model', _CARLA_PRED / 'map_vis', _CARLA_PRED / 'scripts']:
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
+#  derived_object_msgs (optionnel au build, requis au runtime) 
 try:
     from derived_object_msgs.msg import ObjectArray
     _HAS_OBJ_MSG = True
 except ImportError:
     _HAS_OBJ_MSG = False
 
-# ── CarlaPrediction imports ───────────────────────────────────────────────────
-_CARLA_PRED = Path.home() / 'Desktop/CarlaPrediction'
+#  CarlaPrediction imports 
+_CARLA_PRED = Path.home() / 'Desktop/CarlaPrediction/'
 sys.path.insert(0, str(_CARLA_PRED))
 sys.path.insert(0, str(_CARLA_PRED / 'model'))
 
@@ -49,7 +46,7 @@ from train import CarlaLightningModel                            # modèle PL
 from map_vis.vectormapbuilder import VectorNetMapBuilder          # carte OSM
 
 
-# ── Helpers géométriques (réutilisés depuis 03_scene_mining.py) ──────────────
+#  Helpers géométriques (réutilisés depuis 03_scene_mining.py) 
 def wrap_to_pi(angle: float) -> float:
     """Ramène un angle dans [-π, π]."""
     return (angle + math.pi) % (2 * math.pi) - math.pi
@@ -73,7 +70,7 @@ def convert_global_to_local_pose(pose_global, ref_pose):
     return lx, ly, lyaw
 
 
-# ── Mapping type CARLA → NuScenes ────────────────────────────────────────────
+#  Mapping type CARLA → NuScenes 
 # derived_object_msgs.Object.classification : UNKNOWN=0, UNKNOWN_SMALL=1,
 # UNKNOWN_MEDIUM=2, UNKNOWN_BIG=3, PEDESTRIAN=4, BIKE=5, CAR=6, TRUCK=7,
 # MOTORCYCLE=8, OTHER_VEHICLE=9, BARRIER=10, SIGN=11
@@ -83,16 +80,16 @@ def obj_classification_to_nuscenes(classification: int) -> int:
     return _OBJ_TYPE_MAP.get(classification, 2)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 class CarlaPredictionNode(Node):
 
     def __init__(self):
         super().__init__('carla_prediction_node')
 
-        # ── Paramètres ROS2 ──────────────────────────────────────────────────
+        #  Paramètres ROS2 
         self.declare_parameter('model_ckpt',   '')
         self.declare_parameter('config_path',  str(_CARLA_PRED / 'config.yaml'))
-        self.declare_parameter('osm_path',     str(_CARLA_PRED / 'data/maps/Town03.osm'))
+        self.declare_parameter('osm_path',     str(_CARLA_PRED / 'map_data/osm/Town03.osm'))
         self.declare_parameter('publish_hz',   2.0)
         self.declare_parameter('past_frames',  5)
         self.declare_parameter('raw_fps',      20)
@@ -112,11 +109,11 @@ class CarlaPredictionNode(Node):
         # downsample step : 20 FPS → 2 Hz = 1 frame / 10
         self.step = self.raw_fps // int(hz)   # = 10
 
-        # ── Config YAML ──────────────────────────────────────────────────────
+        #  Config YAML 
         with open(cfg_path) as f:
             self.cfg = yaml.safe_load(f)
 
-        # ── Modèle ───────────────────────────────────────────────────────────
+        #  Modèle 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if ckpt and Path(ckpt).exists():
             self.model = CarlaLightningModel.load_from_checkpoint(ckpt, cfg=self.cfg)
@@ -126,11 +123,11 @@ class CarlaPredictionNode(Node):
             self.model = None
             self.get_logger().warn('Pas de checkpoint — inférence désactivée (dry-run OK)')
 
-        # ── Carte OSM ────────────────────────────────────────────────────────
+        #  Carte OSM 
         self.map_builder = VectorNetMapBuilder(osm_path)
         self.get_logger().info(f'Carte OSM chargée : {osm_path}')
 
-        # ── Buffers ──────────────────────────────────────────────────────────
+        #  Buffers 
         # Chaque entrée : {'x': float, 'y': float, 'yaw': float, 'frame': int}
         buf_size = self.raw_fps * 3           # 3 secondes de mémoire brute
         self.ego_buffer    = deque(maxlen=buf_size)
@@ -138,13 +135,13 @@ class CarlaPredictionNode(Node):
         self.agent_types   = {}               # dict[id → int (NuScenes)]
         self.frame_count   = 0
 
-        # ── Publishers ───────────────────────────────────────────────────────
+        #  Publishers 
         self.pub_traj = self.create_publisher(
             MarkerArray, '/carla/prediction/trajectories', 10)
         self.pub_hist = self.create_publisher(
             MarkerArray, '/carla/prediction/history', 10)
 
-        # ── Subscribers ──────────────────────────────────────────────────────
+        #  Subscribers 
         self.create_subscription(
             Odometry, '/carla/ego_vehicle/odometry', self.odom_callback, 10)
 
@@ -154,12 +151,12 @@ class CarlaPredictionNode(Node):
         else:
             self.get_logger().warn('derived_object_msgs introuvable — agents désactivés')
 
-        # ── Timer 2 Hz ───────────────────────────────────────────────────────
+        #  Timer 2 Hz 
         self.create_timer(1.0 / hz, self.prediction_timer_callback)
 
         self.get_logger().info('CarlaPredictionNode prêt.')
 
-    # ── Callback odométrie ────────────────────────────────────────────────────
+    #  Callback odométrie 
     def odom_callback(self, msg: Odometry):
         """Stocke l'état ego brut à 20 Hz. Conversion ROS → CARLA (inversion Y)."""
         self.frame_count += 1
@@ -181,7 +178,7 @@ class CarlaPredictionNode(Node):
             'frame': self.frame_count
         })
 
-    # ── Callback agents ───────────────────────────────────────────────────────
+    #  Callback agents 
     def objects_callback(self, msg):
         """Met à jour les buffers agents à 20 Hz. Prune les agents perdus."""
         if not self.ego_buffer:
@@ -223,7 +220,7 @@ class CarlaPredictionNode(Node):
             self.agent_buffers.pop(aid)
             self.agent_types.pop(aid)
 
-    # ── Sous-échantillonnage ──────────────────────────────────────────────────
+    #  Sous-échantillonnage 
     def _downsample(self, buf, n=5):
         """
         Renvoie n frames régulièrement espacées (step=10) depuis le buffer brut.
@@ -234,37 +231,180 @@ class CarlaPredictionNode(Node):
         indices.reverse()
         return [frames[i] for i in indices]
 
-    # ── Callback timer 2 Hz ───────────────────────────────────────────────────
+    # Callback timer 2 Hz 
     def prediction_timer_callback(self):
-        """
-        TODO (étape suivante) :
-        1. Vérifier que ego_buffer contient assez de frames
-        2. Sous-échantillonner ego + agents
-        3. convert_global_to_local_pose → repère ego-centric
-        4. map_builder.build(ego_global_pose) → tenseurs lane
-        5. Construire data_batch (toutes les clés du modèle)
-        6. model(data_batch) avec torch.no_grad()
-        7. build_marker_array() → pub_traj + pub_hist
-        """
-        if len(self.ego_buffer) < self.step:
-            return   # pas encore assez d'historique
-        pass
+        """Appelée 2x/seconde. Orchestre tout : buffer → modèle → RViz."""
 
-    # ── Construction MarkerArray ──────────────────────────────────────────────
+        # 1. Attendre un cycle complet (avoir l'historique necessaire)
+        if len(self.ego_buffer) < self.step:
+            return
+
+        # 2. Sous-échantillonnage
+        # On passe de 60 frames brutes (20Hz × 3s) à 5 frames espacées de 0.5s
+        # -liste de dicts {x, y, yaw} du plus ancien au plus récent
+        ego_frames = self._downsample(self.ego_buffer, n=self.past_frames)
+
+        #  3. Référence ego (t=0) 
+        # Toutes les coordonnées seront exprimées relativement à cette pose
+        ref = ego_frames[-1]   # le plus récent = la position "maintenant"
+        ref_pose = (ref['x'], ref['y'], ref['yaw'])
+
+        #  4. Historique ego en repère local 
+        # convert_global_to_local_pose transforme chaque (x,y,yaw) monde
+        # en (x,y,yaw) relatif à l'ego courant.
+        # À t=0 (la dernière frame), le résultat sera toujours (0, 0, 0).
+        ego_past = np.zeros((self.past_frames, 3), dtype=np.float32)
+        for i, frame in enumerate(ego_frames):
+            lx, ly, lyaw = convert_global_to_local_pose(
+                (frame['x'], frame['y'], frame['yaw']), ref_pose)
+            ego_past[i] = [lx, ly, lyaw]
+
+        # Masque : True pour chaque frame qu'on a réellement (toujours 5/5 ici)
+        ego_mask = np.ones(self.past_frames, dtype=bool)
+
+        #  5. Agents : sélection + historique en repère local 
+        # On trie les agents par distance à l'ego et on garde les max_agents plus proches
+        def dist_to_ego(buf):
+            last = buf[-1]
+            return math.hypot(last['x'] - ref['x'], last['y'] - ref['y'])
+
+        close_agents = sorted(
+            [(aid, buf) for aid, buf in self.agent_buffers.items()
+             if dist_to_ego(buf) < self.max_dist],
+            key=lambda t: dist_to_ego(t[1])
+        )[:self.max_agents]
+
+        # Tenseurs agents — initialisés à zéro (padding pour les slots vides)
+        agents_past  = np.zeros((self.max_agents, self.past_frames, 3), dtype=np.float32)
+        agents_mask  = np.zeros((self.max_agents, self.past_frames), dtype=bool)
+        agent_types  = np.zeros(self.max_agents, dtype=np.int64)
+
+        for slot, (aid, buf) in enumerate(close_agents):
+            frames = self._downsample(buf, n=self.past_frames)
+            for i, frame in enumerate(frames):
+                lx, ly, lyaw = convert_global_to_local_pose(
+                    (frame['x'], frame['y'], frame['yaw']), ref_pose)
+                agents_past[slot, i] = [lx, ly, lyaw]
+                agents_mask[slot, i] = True
+            agent_types[slot] = self.agent_types.get(aid, 2)
+
+        #  6. Carte OSM → tenseurs lane 
+        # VectorNetMapBuilder retourne les segments de route autour de l'ego
+        # sous la forme de deux tableaux numpy prêts pour le modèle
+        map_data = self.map_builder.build(ref_pose)
+        # map_data['lane']      : [50, 19, 5]  float32
+        # map_data['lane_avail']: [50, 19]      bool
+
+        #  7. Construction du data_batch 
+        # Le modèle attend des tenseurs PyTorch avec une dimension batch B=1.
+        # np → torch, ajout de la dim batch avec unsqueeze(0), envoi sur GPU/CPU.
+        def t(arr):
+            return torch.from_numpy(arr).unsqueeze(0).to(self.device)
+
+        batch = {
+            'ego_past_poses':       t(ego_past),                    # [1, 5, 3]
+            'ego_past_mask':        t(ego_mask),                    # [1, 5]
+            'agents_past_av_poses': t(agents_past),                 # [1, 10, 5, 3]
+            'agents_past_mask':     t(agents_mask),                 # [1, 10, 5]
+            'agent_type':           t(agent_types.astype(np.float32)),  # [1, 10]
+            'lane':                 t(map_data['lane']),            # [1, 50, 19, 5]
+            'lane_avail':           t(map_data['lane_avail'].astype(np.float32)),  # [1, 50, 19]
+        }
+
+        #  8. Inférence 
+        if self.model is None:
+            # Pas de checkpoint : on log et on sort (dry-run)
+            self.get_logger().info('Dry-run OK — batch construit, modèle absent',
+                                   throttle_duration_sec=5.0)
+            return
+
+        with torch.no_grad():
+            result = self.model(batch)
+
+        # Sortie : [1, 11, 5, 12, 3] et [1, 11, 5]
+        # On retire la dim batch (squeeze) et on passe en numpy
+        pred_traj = result['prediction']['traj'].squeeze(0).cpu().numpy()
+        probs     = result['prediction']['probs'].squeeze(0).cpu().numpy()
+
+        #  9. Publication 
+        self.pub_traj.publish(self.build_marker_array(pred_traj, probs))
+
+    #  Construction MarkerArray 
     def build_marker_array(self, pred_traj: np.ndarray, probs: np.ndarray) -> MarkerArray:
         """
-        TODO (étape suivante) :
-        pred_traj : [11, 5, 12, 3]  (ego + 10 agents, 5 modes, 12 steps, x/y/yaw)
-        probs     : [11, 5]
+        Convertit les prédictions du modèle en markers RViz.
 
-        Publie uniquement le meilleur mode par agent (argmax probs).
-        Couleurs : Ego=rouge, Véhicule=bleu, Cycle=vert.
+        pred_traj : [11, 5, 12, 3]  — 11 agents, 5 modes, 12 pas, (x,y,yaw)
+        probs     : [11, 5]         — probabilité de chaque mode
+
+        On publie uniquement le mode le plus probable par agent (argmax).
+        Ego (slot 0) = rouge, Véhicule = bleu, Cycle = vert.
         """
-        ma = MarkerArray()
+        ma  = MarkerArray()
+        now = self.get_clock().now().to_msg()
+
+        # Durée d'affichage du marker avant disparition automatique dans RViz
+        lifetime = Duration()
+        lifetime.sec = 1   # 1 seconde (> période timer 0.5s → toujours visible)
+
+        # Couleurs par type (RGBA, valeurs 0.0–1.0)
+        # slot 0 = ego → rouge ; sinon on utilise le type agent
+        COLORS = {
+            'ego':     (1.0, 0.0, 0.0, 1.0),   # rouge
+            'vehicle': (0.0, 0.4, 1.0, 1.0),   # bleu
+            'cycle':   (0.0, 0.9, 0.2, 1.0),   # vert
+        }
+
+        for agent_idx in range(pred_traj.shape[0]):   # 0..10
+
+            # Mode le plus probable pour cet agent
+            best_mode = int(np.argmax(probs[agent_idx]))
+            traj      = pred_traj[agent_idx, best_mode]   # [12, 3] : 12 pts (x,y,yaw)
+
+            # Ignorer les agents avec trajectoire nulle (slots vides / padding)
+            if np.all(traj[:, :2] == 0.0) and agent_idx > 0:
+                continue
+
+            # Choix de la couleur
+            if agent_idx == 0:
+                color_key = 'ego'
+            elif agent_idx < len(self.agent_buffers):
+                color_key = 'cycle' if list(self.agent_types.values())[agent_idx - 1] == 3 \
+                            else 'vehicle'
+            else:
+                color_key = 'vehicle'
+
+            r, g, b, a = COLORS[color_key]
+
+            # Création du marker LINE_STRIP
+            # Un LINE_STRIP relie une liste de points par des segments
+            m = Marker()
+            m.header.frame_id = 'map'
+            m.header.stamp    = now
+            m.ns              = 'prediction'
+            m.id              = agent_idx
+            m.type            = Marker.LINE_STRIP
+            m.action          = Marker.ADD
+            m.lifetime        = lifetime
+            m.scale.x         = 0.15      # épaisseur de la ligne (mètres)
+            m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, a
+
+            # Les coordonnées sont en repère ego-centric → frame 'map' via TF
+            # Pour l'instant on les publie brutes ; si RViz ne les aligne pas,
+            # il faudra ajouter la transformation TF ego → map.
+            for pt in traj:
+                p = Point()
+                p.x = float(pt[0])
+                p.y = float(pt[1])
+                p.z = 0.0
+                m.points.append(p)
+
+            ma.markers.append(m)
+
         return ma
 
 
-# ── Entrypoint ────────────────────────────────────────────────────────────────
+#  Entrypoint 
 def main():
     rclpy.init()
     node = CarlaPredictionNode()
