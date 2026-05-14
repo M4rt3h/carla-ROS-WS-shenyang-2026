@@ -399,13 +399,13 @@ class CarlaPredictionNode(Node):
             # Pour l'instant on les publie brutes ; si RViz ne les aligne pas,
             # il faudra ajouter la transformation TF ego → map.
             for pt in traj:
-                c = math.cos(ref_pose[2])
-                s = math.sin(ref_pose[2])
+                c = math.cos(ref_pose[2] - math.pi / 2)
+                s = math.sin(ref_pose[2] - math.pi / 2)
                 x_world = ref_pose[0] + c * pt[0] - s * pt[1]
                 y_world = ref_pose[1] + s * pt[0] + c * pt[1]
                 p = Point()
                 p.x = float(x_world)
-                p.y = float(-y_world)  # CARLA → ROS : inversion Y
+                p.y = float(y_world)   # pas d'inversion ici
                 p.z = 0.0
                 m.points.append(p)
 
