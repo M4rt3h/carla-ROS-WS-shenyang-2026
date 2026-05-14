@@ -187,8 +187,15 @@ class CarlaPredictionNode(Node):
         seen_ids = set()
 
         for obj in msg.objects:
+            
             aid = obj.id
             seen_ids.add(aid)
+            pos = obj.pose.position
+            ori = obj.pose.orientation
+
+            ego_last = self.ego_buffer[-1] if self.ego_buffer else None
+            if ego_last and abs(pos.x - ego_last['x']) < 0.5 and abs(-pos.y - ego_last['y']) < 0.5:
+                continue
 
             if aid not in self.agent_buffers:
                 buf_size = self.raw_fps * 3
@@ -196,8 +203,7 @@ class CarlaPredictionNode(Node):
                 self.agent_types[aid]   = obj_classification_to_nuscenes(
                     obj.classification)
 
-            pos = obj.pose.position
-            ori = obj.pose.orientation
+            
             x   =  pos.x
             y   = -pos.y
             siny = 2.0 * (ori.w * ori.z + ori.x * ori.y)
@@ -248,7 +254,10 @@ class CarlaPredictionNode(Node):
             # Toutes les coordonnées seront exprimées relativement à cette pose
             ref = ego_frames[-1]   # le plus récent = la position "maintenant"
             ref_pose = (ref['x'], ref['y'], ref['yaw'])
-            self.get_logger().info(f'ref_pose: {ref_pose}', throttle_duration_sec=2.0)
+            if len(self.agent_buffers) > 0:
+                aid = list(self.agent_buffers.keys())[0]
+                buf = self.agent_buffers[aid]
+                
 
             #  4. Historique ego en repère local 
             # convert_global_to_local_pose transforme chaque (x,y,yaw) monde
@@ -320,9 +329,7 @@ class CarlaPredictionNode(Node):
 
         #  8. Inférence 
         if self.model is None:
-            # Pas de checkpoint : on log et on sort (dry-run)
-            self.get_logger().info('Dry-run OK — batch construit, modèle absent',
-                                   throttle_duration_sec=5.0)
+
             return
 
         with torch.no_grad():
@@ -334,11 +341,11 @@ class CarlaPredictionNode(Node):
         probs     = result['prediction']['probs'].squeeze(0).cpu().numpy()
 
         #  9. Publication 
-        self.pub_traj.publish(self.build_marker_array(pred_traj, probs, ref_pose))
+        self.pub_traj.publish(self.build_marker_array(pred_traj, probs, ref_pose, agents_past))
         self.pub_hist.publish(self.build_history_array(ego_frames, close_agents, ref_pose))
 
     #  Construction MarkerArray 
-    def build_marker_array(self, pred_traj, probs, ref_pose) -> MarkerArray:
+    def build_marker_array(self, pred_traj, probs, ref_pose, agents_past=None) -> MarkerArray:
         """
         Convertit les prédictions du modèle en markers RViz.
 
@@ -370,8 +377,8 @@ class CarlaPredictionNode(Node):
             traj      = pred_traj[agent_idx, best_mode]   # [12, 3] : 12 pts (x,y,yaw)
 
             # Ignorer les agents avec trajectoire nulle (slots vides / padding)
-            #if np.all(traj[:, :2] == 0.0) and agent_idx > 0:
-            #    continue
+            if np.all(traj[:, :2] == 0.0) and agent_idx > 0:
+                continue
 
             # Choix de la couleur
             if agent_idx == 0:
@@ -400,11 +407,20 @@ class CarlaPredictionNode(Node):
             # Les coordonnées sont en repère ego-centric → frame 'map' via TF
             # Pour l'instant on les publie brutes ; si RViz ne les aligne pas,
             # il faudra ajouter la transformation TF ego → map.
+            # Offset local de l'agent (0,0 pour ego, position courante pour agents)
+            if agent_idx == 0:
+                ox, oy = 0.0, 0.0
+            elif agents_past is not None:
+                ox = float(agents_past[agent_idx - 1, -1, 0])  # pas d'échange
+                oy = float(agents_past[agent_idx - 1, -1, 1])
+            else:
+                ox, oy = 0.0, 0.0
+
             c = math.cos(ref_pose[2])
             s = math.sin(ref_pose[2])
             for pt in traj:
-                x_l = float(pt[1])   # échangé
-                y_l = float(pt[0])   # échangé
+                x_l = float(pt[1]) + ox
+                y_l = float(pt[0]) + oy
                 x_w = ref_pose[0] + c * x_l - s * y_l
                 y_w = ref_pose[1] + s * x_l + c * y_l
                 p = Point()
@@ -414,7 +430,7 @@ class CarlaPredictionNode(Node):
                 m.points.append(p)
             
             ma.markers.append(m)
-            if agent_idx > 0 and len(m.points) > 0:
+            if agent_idx == 1:
                 txt = Marker()
                 txt.header.frame_id = 'map'
                 txt.header.stamp    = now
@@ -432,9 +448,6 @@ class CarlaPredictionNode(Node):
                 txt.text = f'{float(prob_softmax[best_mode]):.0%}'
                 ma.markers.append(txt)
 
-            if agent_idx == 0:
-                self.get_logger().info(f'ego traj[0]: x={m.points[0].x:.2f} y={m.points[0].y:.2f}', throttle_duration_sec=2.0)
-        self.get_logger().info(f'agents publiés: {len(ma.markers)}', throttle_duration_sec=2.0)
         return ma
 
     def build_history_array(self, ego_frames, close_agents, ref_pose) -> MarkerArray:
