@@ -335,6 +335,7 @@ class CarlaPredictionNode(Node):
 
         #  9. Publication 
         self.pub_traj.publish(self.build_marker_array(pred_traj, probs, ref_pose))
+        self.pub_hist.publish(self.build_history_array(ego_frames, close_agents, ref_pose))
 
     #  Construction MarkerArray 
     def build_marker_array(self, pred_traj, probs, ref_pose) -> MarkerArray:
@@ -413,12 +414,77 @@ class CarlaPredictionNode(Node):
                 m.points.append(p)
             
             ma.markers.append(m)
+            if agent_idx > 0 and len(m.points) > 0:
+                txt = Marker()
+                txt.header.frame_id = 'map'
+                txt.header.stamp    = now
+                txt.ns              = 'prediction_prob'
+                txt.id              = agent_idx + 100
+                txt.type            = Marker.TEXT_VIEW_FACING
+                txt.action          = Marker.ADD
+                txt.lifetime        = lifetime
+                txt.scale.z         = 0.8
+                txt.color.r = txt.color.g = txt.color.b = txt.color.a = 1.0
+                txt.pose.position.x = m.points[0].x
+                txt.pose.position.y = m.points[0].y
+                txt.pose.position.z = 2.0
+                prob_softmax = np.exp(probs[agent_idx]) / np.sum(np.exp(probs[agent_idx]))
+                txt.text = f'{float(prob_softmax[best_mode]):.0%}'
+                ma.markers.append(txt)
 
             if agent_idx == 0:
                 self.get_logger().info(f'ego traj[0]: x={m.points[0].x:.2f} y={m.points[0].y:.2f}', throttle_duration_sec=2.0)
         self.get_logger().info(f'agents publiés: {len(ma.markers)}', throttle_duration_sec=2.0)
         return ma
 
+    def build_history_array(self, ego_frames, close_agents, ref_pose) -> MarkerArray:
+        """Publie l'historique passé : ego=cyan, agents=gris."""
+        ma  = MarkerArray()
+        now = self.get_clock().now().to_msg()
+        lifetime = Duration()
+        lifetime.sec = 1
+
+        # Ego — cyan
+        m = Marker()
+        m.header.frame_id = 'map'
+        m.header.stamp    = now
+        m.ns      = 'history'
+        m.id      = 0
+        m.type    = Marker.LINE_STRIP
+        m.action  = Marker.ADD
+        m.lifetime = lifetime
+        m.scale.x  = 0.1
+        m.color.r, m.color.g, m.color.b, m.color.a = 0.0, 1.0, 1.0, 1.0
+        for frame in ego_frames:
+            p = Point()
+            p.x = float(frame['x'])
+            p.y = float(-frame['y'])
+            p.z = 0.0
+            m.points.append(p)
+        ma.markers.append(m)
+
+        # Agents — gris
+        for slot, (aid, buf) in enumerate(close_agents):
+            frames = self._downsample(buf, n=self.past_frames)
+            m = Marker()
+            m.header.frame_id = 'map'
+            m.header.stamp    = now
+            m.ns      = 'history'
+            m.id      = slot + 1
+            m.type    = Marker.LINE_STRIP
+            m.action  = Marker.ADD
+            m.lifetime = lifetime
+            m.scale.x  = 0.1
+            m.color.r, m.color.g, m.color.b, m.color.a = 0.5, 0.5, 0.5, 1.0
+            for frame in frames:
+                p = Point()
+                p.x = float(frame['x'])
+                p.y = float(-frame['y'])
+                p.z = 0.0
+                m.points.append(p)
+            ma.markers.append(m)
+
+        return ma
 
 #  Entrypoint 
 def main():
