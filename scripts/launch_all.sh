@@ -43,14 +43,11 @@ echo "Attente bridge (5s)..."
 sleep 5
 
 # Terminal 3 — Node prédiction
-PRED_ARGS="--ros-args -p raw_fps:=10"
-if [ -n "$CKPT" ]; then
-    PRED_ARGS="$PRED_ARGS -p model_ckpt:=\"$CKPT\""
-fi
+
 
 gnome-terminal --title="prediction_node" -- bash -c "
     $ROS_SOURCE
-    ros2 run carla_prediction prediction_node $PRED_ARGS
+    ros2 run carla_prediction prediction_node --ros-args --params-file $WS/carla_prediction/config/prediction_params.yaml -p use_sim_time:=true
     exec bash
 "
 
@@ -69,7 +66,7 @@ sleep 2
 # Terminal 5 — RViz
 gnome-terminal --title="RViz2" -- bash -c "
     source /opt/ros/galactic/setup.bash
-    rviz2
+    ros2 run rviz2 rviz2 --ros-args -p use_sim_time:=true
     exec bash
 "
 

@@ -1,7 +1,7 @@
 carla_prediction_node:
   ros__parameters:
-    model_ckpt: "/home/martin/Desktop/epoch.cptk"                          # à remplir : chemin absolu vers le .ckpt
-    config_path: "/home/martin/Desktop/CarlaPrediction/model/model.cptk"                         # défaut : CarlaPrediction/config.yaml
+    model_ckpt: "/home/martin/Desktop/epoch.ckpt"                          # à remplir : chemin absolu vers le .ckpt
+    config_path: "/home/martin/Desktop/CarlaPrediction/config.yaml"                         # défaut : CarlaPrediction/config.yaml
     osm_path: "/home/martin/Desktop/CarlaPrediction/map_data/osm/Town03.osm"       
     publish_hz: 2.0                         # fréquence d'inférence (Hz)
     past_frames: 5                          # frames d'historique pour le modèle

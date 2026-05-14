@@ -234,33 +234,35 @@ class CarlaPredictionNode(Node):
     # Callback timer 2 Hz 
     def prediction_timer_callback(self):
         """Appelée 2x/seconde. Orchestre tout : buffer → modèle → RViz."""
+        try:
+            # 1. Attendre un cycle complet (avoir l'historique necessaire)
+            if len(self.ego_buffer) < self.step:
+                return
 
-        # 1. Attendre un cycle complet (avoir l'historique necessaire)
-        if len(self.ego_buffer) < self.step:
-            return
+            # 2. Sous-échantillonnage
+            # On passe de 60 frames brutes (20Hz × 3s) à 5 frames espacées de 0.5s
+            # -liste de dicts {x, y, yaw} du plus ancien au plus récent
+            ego_frames = self._downsample(self.ego_buffer, n=self.past_frames)
 
-        # 2. Sous-échantillonnage
-        # On passe de 60 frames brutes (20Hz × 3s) à 5 frames espacées de 0.5s
-        # -liste de dicts {x, y, yaw} du plus ancien au plus récent
-        ego_frames = self._downsample(self.ego_buffer, n=self.past_frames)
+            #  3. Référence ego (t=0) 
+            # Toutes les coordonnées seront exprimées relativement à cette pose
+            ref = ego_frames[-1]   # le plus récent = la position "maintenant"
+            ref_pose = (ref['x'], ref['y'], ref['yaw'])
 
-        #  3. Référence ego (t=0) 
-        # Toutes les coordonnées seront exprimées relativement à cette pose
-        ref = ego_frames[-1]   # le plus récent = la position "maintenant"
-        ref_pose = (ref['x'], ref['y'], ref['yaw'])
+            #  4. Historique ego en repère local 
+            # convert_global_to_local_pose transforme chaque (x,y,yaw) monde
+            # en (x,y,yaw) relatif à l'ego courant.
+            # À t=0 (la dernière frame), le résultat sera toujours (0, 0, 0).
+            ego_past = np.zeros((self.past_frames, 3), dtype=np.float32)
+            for i, frame in enumerate(ego_frames):
+                lx, ly, lyaw = convert_global_to_local_pose(
+                    (frame['x'], frame['y'], frame['yaw']), ref_pose)
+                ego_past[i] = [lx, ly, lyaw]
 
-        #  4. Historique ego en repère local 
-        # convert_global_to_local_pose transforme chaque (x,y,yaw) monde
-        # en (x,y,yaw) relatif à l'ego courant.
-        # À t=0 (la dernière frame), le résultat sera toujours (0, 0, 0).
-        ego_past = np.zeros((self.past_frames, 3), dtype=np.float32)
-        for i, frame in enumerate(ego_frames):
-            lx, ly, lyaw = convert_global_to_local_pose(
-                (frame['x'], frame['y'], frame['yaw']), ref_pose)
-            ego_past[i] = [lx, ly, lyaw]
-
-        # Masque : True pour chaque frame qu'on a réellement (toujours 5/5 ici)
-        ego_mask = np.ones(self.past_frames, dtype=bool)
+            # Masque : True pour chaque frame qu'on a réellement (toujours 5/5 ici)
+            ego_mask = np.ones(self.past_frames, dtype=bool)
+        except Exception as e:
+            self.get_logger().error(f'Erreur timer: {e}')
 
         #  5. Agents : sélection + historique en repère local 
         # On trie les agents par distance à l'ego et on garde les max_agents plus proches
@@ -331,10 +333,10 @@ class CarlaPredictionNode(Node):
         probs     = result['prediction']['probs'].squeeze(0).cpu().numpy()
 
         #  9. Publication 
-        self.pub_traj.publish(self.build_marker_array(pred_traj, probs))
+        self.pub_traj.publish(self.build_marker_array(pred_traj, probs, ref_pose))
 
     #  Construction MarkerArray 
-    def build_marker_array(self, pred_traj: np.ndarray, probs: np.ndarray) -> MarkerArray:
+    def build_marker_array(self, pred_traj, probs, ref_pose) -> MarkerArray:
         """
         Convertit les prédictions du modèle en markers RViz.
 
@@ -383,7 +385,7 @@ class CarlaPredictionNode(Node):
             # Création du marker LINE_STRIP
             # Un LINE_STRIP relie une liste de points par des segments
             m = Marker()
-            m.header.frame_id = 'ego_vehicle'
+            m.header.frame_id = 'map'
             m.header.stamp    = now
             m.ns              = 'prediction'
             m.id              = agent_idx
@@ -397,9 +399,13 @@ class CarlaPredictionNode(Node):
             # Pour l'instant on les publie brutes ; si RViz ne les aligne pas,
             # il faudra ajouter la transformation TF ego → map.
             for pt in traj:
+                c = math.cos(ref_pose[2])
+                s = math.sin(ref_pose[2])
+                x_world = ref_pose[0] + c * pt[0] - s * pt[1]
+                y_world = ref_pose[1] + s * pt[0] + c * pt[1]
                 p = Point()
-                p.x = float(pt[0])
-                p.y = float(pt[1])
+                p.x = float(x_world)
+                p.y = float(-y_world)  # CARLA → ROS : inversion Y
                 p.z = 0.0
                 m.points.append(p)
 
