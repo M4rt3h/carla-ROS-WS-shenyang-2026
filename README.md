@@ -75,3 +75,14 @@ colcon build --packages-select carla_prediction
 | `/carla/prediction/trajectories` | MarkerArray | Trajectoires prédites |
 | `/carla/prediction/history` | MarkerArray | Historique agents |
 | `/carla/map_visualization` | MarkerArray | Carte OSM |
+
+
+## Spawner des agents NPC (trafic)
+
+Dans un terminal séparé, après le bridge :
+```bash
+conda deactivate
+cd ~/Desktop/Stage/Documents\ fournis/Carla/CARLA_0.9.13/PythonAPI/examples
+python3 generate_traffic.py -n 20 --asynch
+```
+`--asynch` obligatoire — le bridge ROS tourne en mode synchrone.
