@@ -248,6 +248,7 @@ class CarlaPredictionNode(Node):
             # Toutes les coordonnées seront exprimées relativement à cette pose
             ref = ego_frames[-1]   # le plus récent = la position "maintenant"
             ref_pose = (ref['x'], ref['y'], ref['yaw'])
+            self.get_logger().info(f'ref_pose: {ref_pose}', throttle_duration_sec=2.0)
 
             #  4. Historique ego en repère local 
             # convert_global_to_local_pose transforme chaque (x,y,yaw) monde
@@ -368,8 +369,8 @@ class CarlaPredictionNode(Node):
             traj      = pred_traj[agent_idx, best_mode]   # [12, 3] : 12 pts (x,y,yaw)
 
             # Ignorer les agents avec trajectoire nulle (slots vides / padding)
-            if np.all(traj[:, :2] == 0.0) and agent_idx > 0:
-                continue
+            #if np.all(traj[:, :2] == 0.0) and agent_idx > 0:
+            #    continue
 
             # Choix de la couleur
             if agent_idx == 0:
@@ -398,19 +399,24 @@ class CarlaPredictionNode(Node):
             # Les coordonnées sont en repère ego-centric → frame 'map' via TF
             # Pour l'instant on les publie brutes ; si RViz ne les aligne pas,
             # il faudra ajouter la transformation TF ego → map.
+            c = math.cos(ref_pose[2])
+            s = math.sin(ref_pose[2])
             for pt in traj:
-                c = math.cos(ref_pose[2] - math.pi / 2)
-                s = math.sin(ref_pose[2] - math.pi / 2)
-                x_world = ref_pose[0] + c * pt[0] - s * pt[1]
-                y_world = ref_pose[1] + s * pt[0] + c * pt[1]
+                x_l = float(pt[1])   # échangé
+                y_l = float(pt[0])   # échangé
+                x_w = ref_pose[0] + c * x_l - s * y_l
+                y_w = ref_pose[1] + s * x_l + c * y_l
                 p = Point()
-                p.x = float(x_world)
-                p.y = float(y_world)   # pas d'inversion ici
+                p.x = x_w
+                p.y = -y_w    # repasse en ROS
                 p.z = 0.0
                 m.points.append(p)
-
+            
             ma.markers.append(m)
 
+            if agent_idx == 0:
+                self.get_logger().info(f'ego traj[0]: x={m.points[0].x:.2f} y={m.points[0].y:.2f}', throttle_duration_sec=2.0)
+        self.get_logger().info(f'agents publiés: {len(ma.markers)}', throttle_duration_sec=2.0)
         return ma
 
 

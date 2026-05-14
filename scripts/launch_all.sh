@@ -24,7 +24,7 @@ echo "Lancement du pipeline CARLA + ROS2..."
 # Terminal 1 — CARLA
 gnome-terminal --title="CARLA Simulator" -- bash -c "
     cd \"$CARLA_PATH\"
-    ./CarlaUE4.sh
+    ./CarlaUE4.sh -RenderOffScreen
     exec bash
 "
 
