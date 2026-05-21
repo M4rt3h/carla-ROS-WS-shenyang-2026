@@ -401,7 +401,7 @@ class CarlaPredictionNode(Node):
             m.type            = Marker.LINE_STRIP
             m.action          = Marker.ADD
             m.lifetime        = lifetime
-            m.scale.x         = 0.15      # épaisseur de la ligne (mètres)
+            m.scale.x         = 0.30      # épaisseur de la ligne prediction ego(mètres) (thickness)
             m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, a
 
             # Les coordonnées sont en repère ego-centric → frame 'map' via TF
@@ -466,7 +466,7 @@ class CarlaPredictionNode(Node):
         m.type    = Marker.LINE_STRIP
         m.action  = Marker.ADD
         m.lifetime = lifetime
-        m.scale.x  = 0.1
+        m.scale.x  = 0.20  #taille trait historique (thickness)
         m.color.r, m.color.g, m.color.b, m.color.a = 0.0, 1.0, 1.0, 1.0
         for frame in ego_frames:
             p = Point()
@@ -487,7 +487,7 @@ class CarlaPredictionNode(Node):
             m.type    = Marker.LINE_STRIP
             m.action  = Marker.ADD
             m.lifetime = lifetime
-            m.scale.x  = 0.1
+            m.scale.x  = 0.20  #taille trait agents (thickness)
             m.color.r, m.color.g, m.color.b, m.color.a = 0.5, 0.5, 0.5, 1.0
             for frame in frames:
                 p = Point()
