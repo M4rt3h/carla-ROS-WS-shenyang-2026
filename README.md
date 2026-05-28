@@ -32,10 +32,11 @@ source /opt/ros/galactic/setup.bash
 source ~/Desktop/Stage/Projet/ws_carla_ros/install/setup.bash
 ros2 run carla_prediction prediction_node \
   --ros-args \
-  -p raw_fps:=10 \
-  -p model_ckpt:="/chemin/vers/checkpoint.ckpt"
+  --params-file ~/Desktop/Stage/Projet/ws_carla_ros/carla_prediction/config/prediction_params.yaml \
+  -p use_sim_time:=true
 ```
-Sans checkpoint → dry-run (pipeline validé, pas de prédiction).
+Le checkpoint et les paramètres sont définis dans `carla_prediction/config/prediction_params.yaml`.
+Sans checkpoint dans le yaml → dry-run (pipeline validé, pas de prédiction).
 Avec checkpoint → prédictions publiées sur `/carla/prediction/trajectories`.
 
 ### Terminal 4 — Visualisation carte OSM
@@ -86,3 +87,10 @@ cd ~/Desktop/Stage/Documents\ fournis/Carla/CARLA_0.9.13/PythonAPI/examples
 python3 generate_traffic.py -n 20 --asynch
 ```
 `--asynch` obligatoire — le bridge ROS tourne en mode synchrone.
+
+## Lancement automatique
+
+```bash
+./scripts/launch_all.sh
+```
+Lance CARLA, le bridge, le node de prédiction, la carte OSM et RViz en séquence.
