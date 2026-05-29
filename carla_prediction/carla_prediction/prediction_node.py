@@ -16,6 +16,7 @@ from collections import deque
 import numpy as np
 import torch
 import yaml
+import threading
 
 import rclpy
 from rclpy.node import Node
@@ -126,6 +127,18 @@ class CarlaPredictionNode(Node):
         #  Carte OSM 
         self.map_builder = VectorNetMapBuilder(osm_path)
         self.get_logger().info(f'Carte OSM chargée : {osm_path}')
+        self.osm_dir     = _CARLA_PRED / 'map_data/osm'
+        self.current_town = Path(osm_path).stem   # ex: "Town03"
+        self.map_lock    = threading.Lock()
+
+        # Subscriber world_info — détection automatique de la ville
+        try:
+            from carla_msgs.msg import CarlaWorldInfo
+            self.create_subscription(
+                CarlaWorldInfo, '/carla/world_info',
+                self.world_info_callback, 10)
+        except ImportError:
+            self.get_logger().warn('carla_msgs introuvable — multi-town désactivé')
 
         #  Buffers 
         # Chaque entrée : {'x': float, 'y': float, 'yaw': float, 'frame': int}
@@ -148,6 +161,7 @@ class CarlaPredictionNode(Node):
         if _HAS_OBJ_MSG:
             self.create_subscription(
                 ObjectArray, '/carla/objects', self.objects_callback, 10)
+                
         else:
             self.get_logger().warn('derived_object_msgs introuvable — agents désactivés')
 
@@ -226,6 +240,20 @@ class CarlaPredictionNode(Node):
             self.agent_buffers.pop(aid)
             self.agent_types.pop(aid)
 
+    def world_info_callback(self, msg):
+        """Recharge la carte OSM si la ville CARLA change."""
+        town = msg.map_name.split('/')[-1]   # "/Game/Carla/Maps/Town03" → "Town03"
+        if town == self.current_town:
+            return
+        osm_path = self.osm_dir / f'{town}.osm'
+        if not osm_path.exists():
+            self.get_logger().warn(f'OSM introuvable pour {town} : {osm_path}')
+            return
+        with self.map_lock:
+            self.map_builder = VectorNetMapBuilder(str(osm_path))
+            self.current_town = town
+        self.get_logger().info(f'Carte rechargée : {town}')
+
     #  Sous-échantillonnage 
     def _downsample(self, buf, n=5):
         """
@@ -303,7 +331,8 @@ class CarlaPredictionNode(Node):
         #  6. Carte OSM → tenseurs lane 
         # VectorNetMapBuilder retourne les segments de route autour de l'ego
         # sous la forme de deux tableaux numpy prêts pour le modèle
-        map_data = self.map_builder.build(ref_pose)
+        with self.map_lock:
+            map_data = self.map_builder.build(ref_pose)
         # map_data['lane']      : [50, 19, 5]  float32
         # map_data['lane_avail']: [50, 19]      bool
 
