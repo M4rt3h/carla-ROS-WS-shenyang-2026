@@ -75,7 +75,7 @@ wait_bar 8 "Démarrage CARLA..."
 
 echo -e "${B}▶ [2/6]${N} ROS2 Bridge"
 open_t "carla_ros_bridge" "t2" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_ros_bridge carla_ros_bridge_with_example_ego_vehicle.launch.py"
-wait_bar 5 "Démarrage bridge..."
+wait_bar 12 "Démarrage bridge..."
 
 echo -e "${B}▶ [3/6]${N} Trafic NPC"
 open_t "NPC Traffic" "t3" "cd \"$CARLA_PATH/PythonAPI/examples\" && source $HOME/miniconda3/etc/profile.d/conda.sh && conda activate carla_env && PYTHONPATH=\"$CARLA_EGG:\$PYTHONPATH\" python3 generate_traffic.py -n 50 -w 10 --safe --asynch"
@@ -90,7 +90,8 @@ open_t "carla_map_visualization" "t5" "$CARLA_ENV && $ROS_SOURCE && ros2 launch 
 wait_bar 2 "Chargement map..."
 
 echo -e "${B}▶ [6/6]${N} RViz2"
-open_t "RViz2" "t6" "source /opt/ros/galactic/setup.bash && ros2 run rviz2 rviz2 --ros-args -p use_sim_time:=true"
+sleep 4
+open_t "RViz2" "t6" "source /opt/ros/galactic/setup.bash && ros2 run rviz2 rviz2 -d $HOME/Desktop/CarlaPrediction/configs/config.rviz --ros-args -p use_sim_time:=true"
 
 # ─── STATUT FINAL ───────────────────────────────────────────────────────────
 echo ""
@@ -106,3 +107,4 @@ echo -e "  ${W}║${N}  ${R}⏎  Entrée pour tout arrêter${N}             ${W}
 echo -e "  ${W}╚══════════════════════════════════════════╝${N}"
 echo ""
 read -r
+
