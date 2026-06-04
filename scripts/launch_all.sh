@@ -6,6 +6,9 @@ CARLA_PATH="$HOME/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.13"
 CARLA_EGG="$CARLA_PATH/PythonAPI/carla/dist/carla-0.9.13-py3.7-linux-x86_64.egg"
 WS="$HOME/Desktop/Stage/Projet/ws_carla_ros"
 CKPT="${1:-}"
+DEBUG=false
+[[ " $* " == *" --debug "* ]] && DEBUG=true
+mkdir -p /tmp/carla_pipeline_logs
 ROS_SOURCE="source /opt/ros/galactic/setup.bash && source $WS/install/setup.bash"
 CARLA_ENV="export PYTHONPATH=\$PYTHONPATH:\"$CARLA_EGG\""
 
@@ -17,23 +20,37 @@ rm -f "$PID_DIR"/*.pid
 R='\033[0;31m' G='\033[0;32m' Y='\033[0;33m'
 B='\033[0;34m' C='\033[0;36m' W='\033[1;37m' N='\033[0m'
 
+
 # ─── NETTOYAGE ──────────────────────────────────────────────────────────────
 cleanup() {
+    trap - EXIT INT TERM
+    
     echo ""
     echo -e "${R}🛑 Arrêt en cours...${N}"
+    
+    # 1. Envoyer un signal d'interruption à l'arbre de processus complet (PGID)
     for pidfile in "$PID_DIR"/*.pid; do
         [ -f "$pidfile" ] || continue
         pid=$(cat "$pidfile")
-        pgid=$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')
-        [ -n "$pgid" ] && kill -TERM -"$pgid" 2>/dev/null
-        kill -TERM "$pid" 2>/dev/null
+        
+        # Le signe "-" devant $pid envoie le signal à TOUT le groupe de processus (enfants inclus).
+        # On utilise INT (Ctrl+C) plutôt que TERM, car Unreal Engine le gère de façon plus fiable en arrière-plan.
+        kill -INT "-$pid" 2>/dev/null || kill -TERM "-$pid" 2>/dev/null
     done
+    
     sleep 2
-    pkill -f "CarlaUE4"          2>/dev/null
-    pkill -f "carla_ros_bridge"  2>/dev/null
-    pkill -f "prediction_node"   2>/dev/null
-    pkill -f "map_visualization" 2>/dev/null
-    pkill -f "rviz2"             2>/dev/null
+    
+    # 2. Sécurité absolue pour le binaire Unreal Engine (cas limite)
+    killall -9 CarlaUE4-Linux-Shipping 2>/dev/null
+    pkill -9 -f "CarlaUE4" 2>/dev/null
+    
+    # 3. Arrêt forcé des scripts Python et des nœuds ROS2
+    pkill -f "generate_traffic.py" 2>/dev/null
+    pkill -f "carla_ros_bridge"    2>/dev/null
+    pkill -f "prediction_node"     2>/dev/null
+    pkill -f "map_visualization"   2>/dev/null
+    pkill -f "rviz2"               2>/dev/null
+    
     rm -rf "$PID_DIR"
     echo -e "${G}✅ Tout arrêté.${N}"
 }
@@ -45,7 +62,13 @@ fi
 
 open_t() {
     local title="$1" name="$2" cmd="$3"
-    gnome-terminal --title="$title" -- bash -c "echo \$\$ > \"$PID_DIR/$name.pid\"; $cmd; exec bash"
+    if $DEBUG; then
+        gnome-terminal --title="$title" -- bash -c "echo \$\$ > \"$PID_DIR/$name.pid\"; $cmd; exec bash"
+    else
+        # L'astuce "set -m" place ce job dans son propre groupe de processus (PGID).
+        # Le '&' est placé à l'extérieur des guillemets.
+        (set -m; bash -c "$cmd" > "/tmp/carla_pipeline_logs/$name.log" 2>&1 & echo $! > "$PID_DIR/$name.pid")
+    fi
 }
 
 wait_bar() {
@@ -107,4 +130,3 @@ echo -e "  ${W}║${N}  ${R}⏎  Entrée pour tout arrêter${N}             ${W}
 echo -e "  ${W}╚══════════════════════════════════════════╝${N}"
 echo ""
 read -r
-

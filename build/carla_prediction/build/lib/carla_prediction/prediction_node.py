@@ -16,6 +16,7 @@ from collections import deque
 import numpy as np
 import torch
 import yaml
+import threading
 
 import rclpy
 from rclpy.node import Node
@@ -126,6 +127,18 @@ class CarlaPredictionNode(Node):
         #  Carte OSM 
         self.map_builder = VectorNetMapBuilder(osm_path)
         self.get_logger().info(f'Carte OSM chargée : {osm_path}')
+        self.osm_dir     = _CARLA_PRED / 'map_data/osm'
+        self.current_town = Path(osm_path).stem   # ex: "Town03"
+        self.map_lock    = threading.Lock()
+
+        # Subscriber world_info — détection automatique de la ville
+        try:
+            from carla_msgs.msg import CarlaWorldInfo
+            self.create_subscription(
+                CarlaWorldInfo, '/carla/world_info',
+                self.world_info_callback, 10)
+        except ImportError:
+            self.get_logger().warn('carla_msgs introuvable — multi-town désactivé')
 
         #  Buffers 
         # Chaque entrée : {'x': float, 'y': float, 'yaw': float, 'frame': int}
@@ -148,6 +161,7 @@ class CarlaPredictionNode(Node):
         if _HAS_OBJ_MSG:
             self.create_subscription(
                 ObjectArray, '/carla/objects', self.objects_callback, 10)
+                
         else:
             self.get_logger().warn('derived_object_msgs introuvable — agents désactivés')
 
@@ -226,6 +240,20 @@ class CarlaPredictionNode(Node):
             self.agent_buffers.pop(aid)
             self.agent_types.pop(aid)
 
+    def world_info_callback(self, msg):
+        """Recharge la carte OSM si la ville CARLA change."""
+        town = msg.map_name.split('/')[-1]   # "/Game/Carla/Maps/Town03" → "Town03"
+        if town == self.current_town:
+            return
+        osm_path = self.osm_dir / f'{town}.osm'
+        if not osm_path.exists():
+            self.get_logger().warn(f'OSM introuvable pour {town} : {osm_path}')
+            return
+        with self.map_lock:
+            self.map_builder = VectorNetMapBuilder(str(osm_path))
+            self.current_town = town
+        self.get_logger().info(f'Carte rechargée : {town}')
+
     #  Sous-échantillonnage 
     def _downsample(self, buf, n=5):
         """
@@ -303,7 +331,8 @@ class CarlaPredictionNode(Node):
         #  6. Carte OSM → tenseurs lane 
         # VectorNetMapBuilder retourne les segments de route autour de l'ego
         # sous la forme de deux tableaux numpy prêts pour le modèle
-        map_data = self.map_builder.build(ref_pose)
+        with self.map_lock:
+            map_data = self.map_builder.build(ref_pose)
         # map_data['lane']      : [50, 19, 5]  float32
         # map_data['lane_avail']: [50, 19]      bool
 
@@ -329,7 +358,7 @@ class CarlaPredictionNode(Node):
 
         #  8. Inférence 
         if self.model is None:
-
+            self.get_logger().info(f"Agents proches: {len(close_agents)} | tenseur_agents_non_zero: {np.count_nonzero(agents_past[:,:,:2])}", throttle_duration_sec=2.0)
             return
 
         with torch.no_grad():
@@ -346,109 +375,107 @@ class CarlaPredictionNode(Node):
 
     #  Construction MarkerArray 
     def build_marker_array(self, pred_traj, probs, ref_pose, agents_past=None) -> MarkerArray:
-        """
-        Convertit les prédictions du modèle en markers RViz.
-
-        pred_traj : [11, 5, 12, 3]  — 11 agents, 5 modes, 12 pas, (x,y,yaw)
-        probs     : [11, 5]         — probabilité de chaque mode
-
-        On publie uniquement le mode le plus probable par agent (argmax).
-        Ego (slot 0) = rouge, Véhicule = bleu, Cycle = vert.
-        """
         ma  = MarkerArray()
         now = self.get_clock().now().to_msg()
-
-        # Durée d'affichage du marker avant disparition automatique dans RViz
         lifetime = Duration()
-        lifetime.sec = 1   # 1 seconde (> période timer 0.5s → toujours visible)
+        lifetime.sec = 1   
 
-        # Couleurs par type (RGBA, valeurs 0.0–1.0)
-        # slot 0 = ego → rouge ; sinon on utilise le type agent
-        COLORS = {
-            'ego':     (1.0, 0.0, 0.0, 1.0),   # rouge
-            'vehicle': (0.0, 0.4, 1.0, 1.0),   # bleu
-            'cycle':   (0.0, 0.9, 0.2, 1.0),   # vert
-        }
-
-        for agent_idx in range(pred_traj.shape[0]):   # 0..10
-
-            # Mode le plus probable pour cet agent
-            best_mode = int(np.argmax(probs[agent_idx]))
-            traj      = pred_traj[agent_idx, best_mode]   # [12, 3] : 12 pts (x,y,yaw)
-
-            # Ignorer les agents avec trajectoire nulle (slots vides / padding)
-            if np.all(traj[:, :2] == 0.0) and agent_idx > 0:
+        for agent_idx in range(pred_traj.shape[0]):
+            
+            # Ignorer les agents vides
+            if np.all(pred_traj[agent_idx, 0, :, :2] == 0.0) and agent_idx > 0:
                 continue
 
-            # Choix de la couleur
-            if agent_idx == 0:
-                color_key = 'ego'
-            elif agent_idx < len(self.agent_buffers):
-                color_key = 'cycle' if list(self.agent_types.values())[agent_idx - 1] == 3 \
-                            else 'vehicle'
-            else:
-                color_key = 'vehicle'
+            best_mode = int(np.argmax(probs[agent_idx]))
+            prob_softmax = np.exp(probs[agent_idx]) / np.sum(np.exp(probs[agent_idx]))
 
-            r, g, b, a = COLORS[color_key]
+            for mode_idx in range(pred_traj.shape[1]):
+                traj = pred_traj[agent_idx, mode_idx]
+                
+                m = Marker()
+                m.header.frame_id = 'map'
+                m.header.stamp    = now
+                m.ns              = 'prediction'
+                m.id              = agent_idx * 10 + mode_idx  
+                m.type            = Marker.LINE_STRIP
+                m.action          = Marker.ADD
+                m.lifetime        = lifetime
+                
+                # --- GESTION STRICTE DES COULEURS ---
+                if agent_idx == 0:
+                    if mode_idx == best_mode:
+                        m.color.r, m.color.g, m.color.b = 1.0, 0.0, 0.0
+                        m.color.a = 1.0
+                        m.scale.x = 0.25
+                    else:
+                        m.color.r, m.color.g, m.color.b = 0.5, 0.0, 0.0
+                        m.color.a = max(0.15, float(prob_softmax[mode_idx]))
+                        m.scale.x = 0.15
+                else:
+                    is_cycle = False
+                    if agent_idx <= len(self.agent_buffers):
+                        try:
+                            is_cycle = list(self.agent_types.values())[agent_idx - 1] == 3
+                        except IndexError:
+                            pass
+                    
+                    if is_cycle:
+                        m.color.r, m.color.g, m.color.b = 0.0, 0.9, 0.2 
+                    else:
+                        m.color.r, m.color.g, m.color.b = 0.0, 0.4, 1.0 
+                    
+                    if mode_idx == best_mode:
+                        m.color.a = 1.0
+                        m.scale.x = 0.20
+                    else:
+                        m.color.a = max(0.1, float(prob_softmax[mode_idx]))
+                        m.scale.x = 0.15
 
-            # Création du marker LINE_STRIP
-            # Un LINE_STRIP relie une liste de points par des segments
-            m = Marker()
-            m.header.frame_id = 'map'
-            m.header.stamp    = now
-            m.ns              = 'prediction'
-            m.id              = agent_idx
-            m.type            = Marker.LINE_STRIP
-            m.action          = Marker.ADD
-            m.lifetime        = lifetime
-            m.scale.x         = 0.15      # épaisseur de la ligne (mètres)
-            m.color.r, m.color.g, m.color.b, m.color.a = r, g, b, a
+                # --- CORRECTION DU CAP (YAW) DES AGENTS ---
+                if agent_idx == 0:
+                    ox, oy, oyaw = 0.0, 0.0, 0.0
+                elif agents_past is not None:
+                    # Rétabli : X (0), Y (1) et on récupère le Yaw (2)
+                    ox = float(agents_past[agent_idx - 1, -1, 0])
+                    oy = float(agents_past[agent_idx - 1, -1, 1])
+                    oyaw = float(agents_past[agent_idx - 1, -1, 2])
+                else:
+                    ox, oy, oyaw = 0.0, 0.0, 0.0
 
-            # Les coordonnées sont en repère ego-centric → frame 'map' via TF
-            # Pour l'instant on les publie brutes ; si RViz ne les aligne pas,
-            # il faudra ajouter la transformation TF ego → map.
-            # Offset local de l'agent (0,0 pour ego, position courante pour agents)
-            if agent_idx == 0:
-                ox, oy = 0.0, 0.0
-            elif agents_past is not None:
-                ox = float(agents_past[agent_idx - 1, -1, 0])  # pas d'échange
-                oy = float(agents_past[agent_idx - 1, -1, 1])
-            else:
-                ox, oy = 0.0, 0.0
-
-            c = math.cos(ref_pose[2])
-            s = math.sin(ref_pose[2])
-            for pt in traj:
-                x_l = float(pt[1]) + ox
-                y_l = float(pt[0]) + oy
-                x_w = ref_pose[0] + c * x_l - s * y_l
-                y_w = ref_pose[1] + s * x_l + c * y_l
-                p = Point()
-                p.x = x_w
-                p.y = -y_w    # repasse en ROS
-                p.z = 0.0
-                m.points.append(p)
-            
-            ma.markers.append(m)
-            if agent_idx == 1:
-                txt = Marker()
-                txt.header.frame_id = 'map'
-                txt.header.stamp    = now
-                txt.ns              = 'prediction_prob'
-                txt.id              = agent_idx + 100
-                txt.type            = Marker.TEXT_VIEW_FACING
-                txt.action          = Marker.ADD
-                txt.lifetime        = lifetime
-                txt.scale.z         = 0.8
-                txt.color.r = txt.color.g = txt.color.b = txt.color.a = 1.0
-                txt.pose.position.x = m.points[0].x
-                txt.pose.position.y = m.points[0].y
-                txt.pose.position.z = 2.0
-                prob_softmax = np.exp(probs[agent_idx]) / np.sum(np.exp(probs[agent_idx]))
-                txt.text = f'{float(prob_softmax[best_mode]):.0%}'
-                ma.markers.append(txt)
+                # Rotation de l'ego-véhicule
+                c = math.cos(ref_pose[2])
+                s = math.sin(ref_pose[2])
+                
+                # Rotation propre à l'agent
+                c_a = math.cos(oyaw)
+                s_a = math.sin(oyaw)
+                
+                for pt in traj:
+                    pt_x = float(pt[1])
+                    pt_y = float(pt[0])
+                    
+                    # 1. On applique l'orientation de l'agent
+                    x_rot = c_a * pt_x - s_a * pt_y
+                    y_rot = s_a * pt_x + c_a * pt_y
+                    
+                    # 2. On translate à la position de l'agent par rapport à l'Ego
+                    x_l = x_rot + ox
+                    y_l = y_rot + oy
+                    
+                    # 3. On repasse le tout dans le repère de la Map
+                    x_w = ref_pose[0] + c * x_l - s * y_l
+                    y_w = ref_pose[1] + s * x_l + c * y_l
+                    
+                    p = Point()
+                    p.x = x_w
+                    p.y = -y_w
+                    p.z = 0.0
+                    m.points.append(p)
+                
+                ma.markers.append(m)
 
         return ma
+
 
     def build_history_array(self, ego_frames, close_agents, ref_pose) -> MarkerArray:
         """Publie l'historique passé : ego=cyan, agents=gris."""
@@ -466,7 +493,7 @@ class CarlaPredictionNode(Node):
         m.type    = Marker.LINE_STRIP
         m.action  = Marker.ADD
         m.lifetime = lifetime
-        m.scale.x  = 0.1
+        m.scale.x  = 0.20  #taille trait historique (thickness)
         m.color.r, m.color.g, m.color.b, m.color.a = 0.0, 1.0, 1.0, 1.0
         for frame in ego_frames:
             p = Point()
@@ -487,7 +514,7 @@ class CarlaPredictionNode(Node):
             m.type    = Marker.LINE_STRIP
             m.action  = Marker.ADD
             m.lifetime = lifetime
-            m.scale.x  = 0.1
+            m.scale.x  = 0.20  #taille trait agents (thickness)
             m.color.r, m.color.g, m.color.b, m.color.a = 0.5, 0.5, 0.5, 1.0
             for frame in frames:
                 p = Point()
