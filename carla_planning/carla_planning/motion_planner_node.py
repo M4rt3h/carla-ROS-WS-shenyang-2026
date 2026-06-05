@@ -2,6 +2,7 @@
 import rclpy
 from rclpy.node import Node
 import math
+import carla
 
 from rclpy.qos import QoSProfile, DurabilityPolicy
 from visualization_msgs.msg import MarkerArray, Marker
@@ -64,26 +65,32 @@ class MotionPlannerNode(Node):
         if not self.ego_pose:
             return
 
-        parsed_predictions = self._parse_marker_array(msg)
+        obstacles, ego_prediction = self._parse_marker_array(msg)
+        
+        # Sécurité : Arrêt si l'IA crashe ou ne fournit pas de cap
+        if not ego_prediction or len(ego_prediction) < 5:
+            self.get_logger().warn("Perte du signal de l'IA (Pas de ref Ego). Arrêt.")
+            self._publish_control(0.0, 0.0, 1000.0)
+            return
+
         candidates = self._generate_candidates()
         
         best_candidate = None
         min_cost = float('inf')
         
         for candidate in candidates:
-            cost = self._evaluate_cost(candidate, parsed_predictions)
+            cost = self._evaluate_cost(candidate, obstacles, ego_prediction)
             if cost < min_cost:
                 min_cost = cost
                 best_candidate = candidate
 
         if best_candidate:
             self._publish_visualization(best_candidate)
-
-            # On passe la vitesse ET l'angle de volant
             self._publish_control(best_candidate['v'], best_candidate['steer'], min_cost)
 
     def _parse_marker_array(self, marker_array: MarkerArray):
-        predictions = []
+        obstacles = []
+        ego_prediction = None
         ego_x = self.ego_pose.position.x
         ego_y = self.ego_pose.position.y
         yaw = get_yaw(self.ego_pose.orientation)
@@ -95,20 +102,24 @@ class MotionPlannerNode(Node):
             if m.type != 4 or not m.points:
                 continue
                 
-            start_x, start_y = m.points[0].x, m.points[0].y
-            dist_to_ego = math.hypot(start_x - ego_x, start_y - ego_y)
+            pts = [(p.x, p.y) for p in m.points]
             
-            if dist_to_ego < 2.5 or m.color.r > 0.8:
+            # Isolement de la prédiction Ego (Rouge pur)
+            if m.color.r > 0.8 and m.color.b < 0.2 and m.color.g < 0.2:
+                ego_prediction = pts
                 continue
                 
+            start_x, start_y = pts[0][0], pts[0][1]
             dx = start_x - ego_x
             dy = start_y - ego_y
+            
+            # Ignorer les agents derrière
             if (dx * fx + dy * fy) < 0.0:
                 continue
                 
-            predictions.append({'id': m.id, 'prob': m.color.a, 'points': [(p.x, p.y) for p in m.points]})
+            obstacles.append({'prob': m.color.a, 'points': pts})
             
-        return predictions
+        return obstacles, ego_prediction
 
     def _generate_candidates(self):
         candidates = []
@@ -117,12 +128,10 @@ class MotionPlannerNode(Node):
         base_yaw = get_yaw(self.ego_pose.orientation)
 
         speeds = [self.target_speed, self.target_speed / 2.0, 0.0]
-        # Angles de braquage (0 = tout droit, < 0 = gauche, > 0 = droite)
         steers = [0.0, -0.15, 0.15, -0.4, 0.4] 
 
         for v in speeds:
             for s in steers:
-                # Inutile d'évaluer le braquage si on décide de s'arrêter
                 if v == 0.0 and s != 0.0:
                     continue
                     
@@ -130,20 +139,18 @@ class MotionPlannerNode(Node):
                 current_yaw = base_yaw
                 current_x = x
                 current_y = y
-                step_dist = v * 0.5 # Avancée par pas de 0.5s
-                
-                # Approximation de la rotation du véhicule (Bicycle model simplifié)
+                step_dist = v * 0.5 
                 yaw_rate = s * 0.15 
                 
                 for i in range(12):
                     current_x += step_dist * math.cos(current_yaw)
                     current_y += step_dist * math.sin(current_yaw)
                     pts.append((current_x, current_y))
-                    current_yaw += yaw_rate * step_dist # Le cap tourne au fil de l'avancée
+                    current_yaw += yaw_rate * step_dist
                 
-                # Pénalités : On préfère la vitesse max ET la ligne droite
-                speed_penalty = (self.target_speed - v) * 10.0 
-                steer_penalty = abs(s) * 30.0 # Pénalise fort le braquage pour éviter le zigzag
+                speed_penalty = (self.target_speed - v) * 20.0 
+                # Chute drastique de la pénalité (de 30.0 à 2.0)
+                steer_penalty = abs(s) * 2.0 
                 
                 candidates.append({
                     'v': v, 
@@ -153,58 +160,90 @@ class MotionPlannerNode(Node):
                 })
                 
         return candidates
-    
-    def _evaluate_cost(self, candidate, predictions):
+
+    def _evaluate_cost(self, candidate, obstacles, ego_prediction):
         cost = candidate['base_cost']
+        
+        # 1. ÉVALUATION DES OBSTACLES DYNAMIQUES
         for t_idx, ego_pt in enumerate(candidate['points']):
-            for mode in predictions:
+            time_future = t_idx * 0.5 
+            time_discount = math.exp(-0.4 * time_future) 
+            
+            for mode in obstacles:
                 if t_idx < len(mode['points']):
                     agent_pt = mode['points'][t_idx]
                     dist = math.hypot(ego_pt[0] - agent_pt[0], ego_pt[1] - agent_pt[1])
                     
                     if dist < self.safety_distance:
-                        cost += 1000.0 * mode['prob']
+                        cost += 1000.0 * mode['prob'] * time_discount
                     else:
-                        cost += (1.0 / dist) * mode['prob']
+                        cost += (1.0 / dist) * mode['prob'] * time_discount
+                        
+        # 2. PURE PURSUIT SPATIAL (Suivi de l'intuition IA)
+        if len(ego_prediction) > 1:
+            ego_x, ego_y = candidate['points'][0][0], candidate['points'][0][1]
+            target_pt = ego_prediction[-1] # Par défaut, le bout de la ligne rouge
+            
+            # On cherche un "point de mire" situé à environ 5 mètres devant le véhicule
+            for pt in ego_prediction:
+                if math.hypot(pt[0] - ego_x, pt[1] - ego_y) > 5.0:
+                    target_pt = pt
+                    break
+                    
+            # On cherche à quelle distance minimale le tentacule passe de ce point de mire
+            min_dist = float('inf')
+            for cand_pt in candidate['points']:
+                dist = math.hypot(cand_pt[0] - target_pt[0], cand_pt[1] - target_pt[1])
+                if dist < min_dist:
+                    min_dist = dist
+                    
+            # Plafonnement de l'erreur spatiale (Max 5 mètres pris en compte)
+            # Évite que l'erreur de suivi de ligne ne dépasse le coût d'une collision (1000)
+            capped_dist = min(min_dist, 5.0) 
+            cost += (capped_dist ** 2) * 25.0 
+            
         return cost
-
+            
     def _publish_control(self, target_v, target_steer, min_cost):
         cmd = CarlaEgoVehicleControl()
+        current_v = math.hypot(self.ego_twist.linear.x, self.ego_twist.linear.y)
         
-        if min_cost >= 1000.0 or target_v == 0.0:
-            self.get_logger().warn("Obstacle inévitable : Freinage d'urgence !")
+        # 1. Calcul des pédales
+        if min_cost >= 800.0:
+            self.get_logger().warn(f"URGENCE : Freinage absolu ! (Coût: {min_cost:.1f})")
             cmd.throttle = 0.0
             cmd.brake = 1.0
-            cmd.steer = 0.0
         else:
-            current_v = math.hypot(self.ego_twist.linear.x, self.ego_twist.linear.y)
             error = target_v - current_v
             
-            if error > 0:
+            if error > 0.5: 
                 cmd.throttle = min(error * 0.3, 0.8)
                 cmd.brake = 0.0
-            else:
+                action_pedale = "Accélération"
+            elif error < -0.5: 
                 cmd.throttle = 0.0
-                cmd.brake = 0.1 
+                cmd.brake = min(abs(error) * 0.2, 0.8) 
+                action_pedale = "Ralentissement"
+            else: 
+                cmd.throttle = 0.0
+                cmd.brake = 0.0
+                action_pedale = "Maintien vitesse"
                 
-            # Application de l'angle du volant avec INVERSION d'axe pour CARLA
-            cmd.steer = -target_steer 
-            
-            # Affichage dans le terminal
+            if target_v == 0.0 and current_v < 0.2:
+                cmd.brake = 1.0
+                action_pedale = "Arrêt complet"
+                
+        # 2. Application du volant (Inversion d'axe pour CARLA)
+        cmd.steer = -target_steer
+        
+        # 3. Retour terminal permanent
+        if min_cost < 800.0:
             if target_steer == 0.0:
-                if target_v == self.target_speed:
-                    self.get_logger().info(f"Voie libre. Vitesse: {target_v} m/s.")
-                else:
-                    self.get_logger().info(f"Ralentissement préventif à {target_v} m/s.")
+                self.get_logger().info(f"[{action_pedale}] Suivi de voie | Cible: {target_v} m/s | Coût: {min_cost:.1f}")
             else:
-                # Mathématiquement dans ROS : < 0 c'est à Droite
                 direction = "DROITE" if target_steer < 0 else "GAUCHE"
-                self.get_logger().info(f"ÉVITEMENT par la {direction} (steer math: {target_steer:.2f}) à {target_v} m/s.")
-                
-        cmd.hand_brake = False
-        cmd.manual_gear_shift = False
-        self.pub_cmd.publish(cmd)
-                
+                self.get_logger().info(f"[{action_pedale}] Évitement {direction} (steer math: {target_steer:.2f}) | Cible: {target_v} m/s | Coût: {min_cost:.1f}")
+            
         cmd.hand_brake = False
         cmd.manual_gear_shift = False
         self.pub_cmd.publish(cmd)

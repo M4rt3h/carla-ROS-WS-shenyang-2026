@@ -114,7 +114,7 @@ wait_bar 2 "Chargement map..."
 
 echo -e "${B}▶ [6/6]${N} RViz2"
 sleep 4
-open_t "RViz2" "t6" "source /opt/ros/galactic/setup.bash && ros2 run rviz2 rviz2 -d $HOME/Desktop/CarlaPrediction/configs/config.rviz --ros-args -p use_sim_time:=true"
+open_t "RViz2" "t6" "source /opt/ros/galactic/setup.bash && ros2 run rviz2 rviz2 -d $HOME/Desktop/CarlaPrediction/configs/config-debug.rviz --ros-args -p use_sim_time:=true"
 
 # ─── STATUT FINAL ───────────────────────────────────────────────────────────
 echo ""
