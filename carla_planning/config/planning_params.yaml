@@ -1,0 +1,4 @@
+motion_planner_node:
+  ros__parameters:
+    safety_distance: 1.5
+    target_speed: 5.0
