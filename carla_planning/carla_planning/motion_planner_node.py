@@ -4,7 +4,8 @@ from rclpy.node import Node
 import math
 
 from rclpy.qos import QoSProfile, DurabilityPolicy
-from visualization_msgs.msg import MarkerArray
+from visualization_msgs.msg import MarkerArray, Marker
+from geometry_msgs.msg import Point
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool
 from carla_msgs.msg import CarlaEgoVehicleControl
@@ -38,6 +39,9 @@ class MotionPlannerNode(Node):
             depth=1,
             durability=DurabilityPolicy.TRANSIENT_LOCAL
         )
+
+        # Publisher : Visualisation de la trajectoire choisie dans RViz
+        self.pub_viz = self.create_publisher(Marker, '/carla/planning/chosen_trajectory', 10)
 
         # Publishers : Forçage des droits d'accès
         self.pub_autopilot = self.create_publisher(Bool, '/carla/hero/enable_autopilot', latched_qos)
@@ -73,6 +77,8 @@ class MotionPlannerNode(Node):
                 best_candidate = candidate
 
         if best_candidate:
+            self._publish_visualization(best_candidate)
+
             # On passe la vitesse ET l'angle de volant
             self._publish_control(best_candidate['v'], best_candidate['steer'], min_cost)
 
@@ -181,8 +187,8 @@ class MotionPlannerNode(Node):
                 cmd.throttle = 0.0
                 cmd.brake = 0.1 
                 
-            # Application de l'angle du volant
-            cmd.steer = target_steer
+            # Application de l'angle du volant avec INVERSION d'axe pour CARLA
+            cmd.steer = -target_steer 
             
             # Affichage dans le terminal
             if target_steer == 0.0:
@@ -191,8 +197,9 @@ class MotionPlannerNode(Node):
                 else:
                     self.get_logger().info(f"Ralentissement préventif à {target_v} m/s.")
             else:
-                direction = "GAUCHE" if target_steer < 0 else "DROITE"
-                self.get_logger().info(f"ÉVITEMENT par la {direction} (steer: {target_steer}) à {target_v} m/s.")
+                # Mathématiquement dans ROS : < 0 c'est à Droite
+                direction = "DROITE" if target_steer < 0 else "GAUCHE"
+                self.get_logger().info(f"ÉVITEMENT par la {direction} (steer math: {target_steer:.2f}) à {target_v} m/s.")
                 
         cmd.hand_brake = False
         cmd.manual_gear_shift = False
@@ -201,6 +208,33 @@ class MotionPlannerNode(Node):
         cmd.hand_brake = False
         cmd.manual_gear_shift = False
         self.pub_cmd.publish(cmd)
+
+    def _publish_visualization(self, candidate):
+        """Dessine une ligne verte vif dans RViz représentant la trajectoire choisie."""
+        marker = Marker()
+        marker.header.frame_id = "map"  # Référentiel global
+        marker.header.stamp = self.get_clock().now().to_msg()
+        marker.ns = "planning_tentacle"
+        marker.id = 0
+        marker.type = Marker.LINE_STRIP
+        marker.action = Marker.ADD
+        
+        # Style de la ligne : Verte, opaque, 30cm de large
+        marker.scale.x = 0.3 
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+
+        # Ajout des points calculés par le planificateur
+        for pt in candidate['points']:
+            p = Point()
+            p.x = float(pt[0])
+            p.y = float(pt[1])
+            p.z = 0.5  # Légèrement au-dessus du sol pour être visible
+            marker.points.append(p)
+
+        self.pub_viz.publish(marker)
 
 def main():
     rclpy.init()
