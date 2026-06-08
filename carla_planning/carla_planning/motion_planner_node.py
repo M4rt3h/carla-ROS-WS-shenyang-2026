@@ -41,6 +41,12 @@ class MotionPlannerNode(Node):
             durability=DurabilityPolicy.TRANSIENT_LOCAL
         )
 
+        # --- Watchdog (Mécanisme anti-blocage) ---
+        self.stuck_time = 0.0
+        self.recovery_time = 0.0
+        self.is_recovering = False
+        self.recovery_steer = 0.0
+
         # Publisher : Visualisation de la trajectoire choisie dans RViz
         self.pub_viz = self.create_publisher(Marker, '/carla/planning/chosen_trajectory', 10)
 
@@ -208,11 +214,29 @@ class MotionPlannerNode(Node):
         cmd = CarlaEgoVehicleControl()
         current_v = math.hypot(self.ego_twist.linear.x, self.ego_twist.linear.y)
         
-        # 1. Calcul des pédales
+        # 1. MACHINE À ÉTATS : EXÉCUTION DE LA MARCHE ARRIÈRE
+        if self.is_recovering:
+            self.recovery_time -= 0.5 
+            if self.recovery_time <= 0:
+                self.is_recovering = False
+                self.stuck_time = 0.0
+                self.get_logger().info("Fin du dégagement. Nouveau cap établi, retour à l'IA.")
+            else:
+                cmd.throttle = 0.4 
+                cmd.brake = 0.0
+                # On utilise l'angle de dégagement calculé lors du crash
+                cmd.steer = self.recovery_steer 
+                cmd.reverse = True
+                cmd.hand_brake = False
+                cmd.manual_gear_shift = False
+                self.pub_cmd.publish(cmd)
+                return
+
+        # 2. LOGIQUE NORMALE DU PLANIFICATEUR
         if min_cost >= 800.0:
-            self.get_logger().warn(f"URGENCE : Freinage absolu ! (Coût: {min_cost:.1f})")
             cmd.throttle = 0.0
             cmd.brake = 1.0
+            action_pedale = "Arrêt urgence"
         else:
             error = target_v - current_v
             
@@ -232,17 +256,54 @@ class MotionPlannerNode(Node):
             if target_v == 0.0 and current_v < 0.2:
                 cmd.brake = 1.0
                 action_pedale = "Arrêt complet"
+
+        # 3. WATCHDOG HYBRIDE (Tactique + Physique)
+        is_tactically_blocked = (min_cost >= 800.0 and current_v < 0.1)
+        is_physically_blocked = (cmd.throttle > 0.1 and current_v < 0.1)
+
+        if is_tactically_blocked or is_physically_blocked:
+            self.stuck_time += 0.5
+            if self.stuck_time >= 4.0:
+                self.is_recovering = True
+                self.recovery_time = 3.0 
                 
-        # 2. Application du volant (Inversion d'axe pour CARLA)
+                # --- CALCUL DU BRAQUAGE DE DÉGAGEMENT ---
+                # Rappel : Dans CARLA, steer < 0 = Gauche, steer > 0 = Droite.
+                # target_steer (ROS) est inversé : > 0 = Gauche.
+                if target_steer > 0.05:
+                    # Bloqué en voulant aller à gauche. Recule roues à gauche pour que l'avant balaye à droite.
+                    self.recovery_steer = -0.7 
+                elif target_steer < -0.05:
+                    # Bloqué en voulant aller à droite. Recule roues à droite pour que l'avant balaye à gauche.
+                    self.recovery_steer = 0.7 
+                else:
+                    # Bloqué tout droit : on casse la ligne droite arbitrairement vers la droite
+                    self.recovery_steer = 0.7 
+                
+                if is_physically_blocked and not is_tactically_blocked:
+                    self.get_logger().error("COLLISION AVEUGLE : Recul avec modification de cap !")
+                else:
+                    self.get_logger().error("IMPASSE DÉTECTÉE : Recul avec modification de cap !")
+                
+                cmd.throttle = 0.4
+                cmd.brake = 0.0
+                cmd.steer = self.recovery_steer
+                cmd.reverse = True
+                self.pub_cmd.publish(cmd)
+                return
+        else:
+            self.stuck_time = 0.0 
+
+        # 4. PUBLICATION NORMALE (Marche avant)
         cmd.steer = -target_steer
+        cmd.reverse = False
         
-        # 3. Retour terminal permanent
         if min_cost < 800.0:
             if target_steer == 0.0:
-                self.get_logger().info(f"[{action_pedale}] Suivi de voie | Cible: {target_v} m/s | Coût: {min_cost:.1f}")
+                self.get_logger().info(f"[{action_pedale}] Suivi IA | Cible: {target_v} m/s | Coût: {min_cost:.1f}")
             else:
                 direction = "DROITE" if target_steer < 0 else "GAUCHE"
-                self.get_logger().info(f"[{action_pedale}] Évitement {direction} (steer math: {target_steer:.2f}) | Cible: {target_v} m/s | Coût: {min_cost:.1f}")
+                self.get_logger().info(f"[{action_pedale}] Évitement {direction} | Cible: {target_v} m/s | Coût: {min_cost:.1f}")
             
         cmd.hand_brake = False
         cmd.manual_gear_shift = False
