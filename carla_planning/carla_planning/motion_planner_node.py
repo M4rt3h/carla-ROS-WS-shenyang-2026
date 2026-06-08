@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
+import sys
+import math
+
+sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI/carla/dist/carla-0.9.15-py3.8-linux-x86_64.egg')
+sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI/carla')
+sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI')
+
+import carla
+from agents.navigation.global_route_planner import GlobalRoutePlanner
+
 import rclpy
 from rclpy.node import Node
-import math
-import carla
-
 from rclpy.qos import QoSProfile, DurabilityPolicy
+
 from visualization_msgs.msg import MarkerArray, Marker
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PoseStamped
+
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool
 from carla_msgs.msg import CarlaEgoVehicleControl
+
 
 def get_yaw(q):
     siny_cosp = 2 * (q.w * q.z + q.x * q.y)
@@ -27,7 +37,10 @@ class MotionPlannerNode(Node):
         
         self.ego_pose = None
         self.ego_twist = None
-        
+        self.best_control = (0.0, 0.0)  # (v, steer)
+        self.target_waypoint = None 
+        self.create_subscription(PoseStamped, '/goal_pose', self.goal_callback, 10)
+
         # Subscribers
         self.create_subscription(Odometry, '/carla/hero/odometry', self.odom_callback, 10)
         self.create_subscription(MarkerArray, '/carla/prediction/trajectories', self.prediction_callback, 10)
@@ -35,64 +48,165 @@ class MotionPlannerNode(Node):
         # Publishers : Contrôle physique des pédales et du volant
         self.pub_cmd = self.create_publisher(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
         
+        # Publisher : Visualisation de la trajectoire choisie dans RViz
+        self.pub_viz = self.create_publisher(Marker, '/carla/planning/chosen_trajectory', 10)
+        
         # Création d'un profil QoS "Transient Local" (Latched)
         latched_qos = QoSProfile(
             depth=1,
             durability=DurabilityPolicy.TRANSIENT_LOCAL
         )
 
+        # Publishers : Forçage des droits d'accès
+        self.pub_autopilot = self.create_publisher(Bool, '/carla/hero/enable_autopilot', latched_qos)
+        self.pub_override = self.create_publisher(Bool, '/carla/hero/vehicle_control_manual_override', latched_qos)
+
+        
+
         # --- Watchdog (Mécanisme anti-blocage) ---
         self.stuck_time = 0.0
         self.recovery_time = 0.0
         self.is_recovering = False
         self.recovery_steer = 0.0
+        self.last_obstacles = []
 
-        # Publisher : Visualisation de la trajectoire choisie dans RViz
-        self.pub_viz = self.create_publisher(Marker, '/carla/planning/chosen_trajectory', 10)
+        # CARLA map connection
+        try:
+            self._carla_map = carla.Client('localhost', 2000).get_world().get_map()
+            self._grp = GlobalRoutePlanner(self._carla_map, sampling_resolution=4.0)
+            self.get_logger().info('GlobalRoutePlanner initialisé.')
+        except Exception as e:
+            self._grp = None
+            self.get_logger().error(f'CARLA connexion échouée: {e}')
 
-        # Publishers : Forçage des droits d'accès
-        self.pub_autopilot = self.create_publisher(Bool, '/carla/hero/enable_autopilot', latched_qos)
-        self.pub_override = self.create_publisher(Bool, '/carla/hero/vehicle_control_manual_override', latched_qos)
+        ##
+        self.path_waypoints = []
+        self.pub_path = self.create_publisher(MarkerArray, '/carla/planning/path', 10)
         
-        # Verrouillage du contrôle à 2 Hz (Écrase tes actions manuelles après 0.5s)
-        self.create_timer(0.5, self._force_ros_control)
+        self.create_timer(0.1, self._control_loop)  # 10 Hz
 
-    def _force_ros_control(self):
-        msg = Bool()
-        msg.data = False
+        self.target_waypoint = None
+        self.create_subscription(PoseStamped, '/goal_pose', self.goal_callback, 10)
+
+    def goal_callback(self, msg: PoseStamped):
+        self.target_waypoint = (msg.pose.position.x, -msg.pose.position.y)  # ROS frame, inversion Y
+        self.get_logger().info(f'Nouvelle cible : {self.target_waypoint}')
+        self._replan()
+
+    def _replan(self):
+        if self._grp is None or self.ego_pose is None:
+            return
+        ex, ey = self.ego_pose.position.x, -self.ego_pose.position.y
+        gx, gy = self.target_waypoint
+        # ROS → CARLA : inversion Y
+        start = carla.Location(x=ex,  y=ey,  z=0.0)
+        end   = carla.Location(x=gx,  y=gy,  z=0.0)
+        """try:
+            route = self._grp.trace_route(start, end)
+            # Stockage en ROS frame
+            self.path_waypoints = [(wp.transform.location.x, -wp.transform.location.y)
+                                for wp, _ in route]
+            self._publish_path()
+            self.get_logger().info(f'Route calculée : {len(self.path_waypoints)} waypoints.')
+        except Exception as e:
+            self.get_logger().error(f'Replanning échoué: {e}')
+        raw = [(wp.transform.location.x, -wp.transform.location.y) for wp, _ in route]
+        # Garde 1 WP tous les 4m minimum
+        self.path_waypoints = [raw[0]]
+        for pt in raw[1:]:
+            if math.hypot(pt[0]-self.path_waypoints[-1][0], pt[1]-self.path_waypoints[-1][1]) >= 4.0:
+                self.path_waypoints.append(pt)"""
+        
+        try:
+            route = self._grp.trace_route(start, end)
+            raw = [(wp.transform.location.x, -wp.transform.location.y) for wp, _ in route]
+            self.path_waypoints = [raw[0]]
+            for pt in raw[1:]:
+                if math.hypot(pt[0]-self.path_waypoints[-1][0], pt[1]-self.path_waypoints[-1][1]) >= 4.0:
+                    self.path_waypoints.append(pt)
+            self._publish_path()
+            self.get_logger().info(f'Route calculée : {len(self.path_waypoints)} waypoints.')
+        except Exception as e:
+            self.get_logger().error(f'Replanning échoué: {e}')
+    
+    def _publish_path(self):
+        ma = MarkerArray()
+        m = Marker()
+        m.header.frame_id = 'map'
+        m.header.stamp = self.get_clock().now().to_msg()
+        m.ns = 'planned_path'; m.id = 0
+        m.type = Marker.LINE_STRIP; m.action = Marker.ADD
+        m.scale.x = 0.25
+        m.color.r, m.color.g, m.color.b, m.color.a = 0.0, 1.0, 0.5, 0.9
+        for wx, wy in self.path_waypoints:
+            m.points.append(Point(x=float(wx), y=float(wy), z=0.1))
+        ma.markers.append(m)
+        self.pub_path.publish(ma)
+
+    def _control_loop(self):
+        # Force ROS control (écrase autopilot)
+        msg = Bool(); msg.data = False
         self.pub_autopilot.publish(msg)
         self.pub_override.publish(msg)
+
+        if not self.ego_pose or not self.path_waypoints:
+            return
+
+        # Arrivée détectée
+        ex, ey = self.ego_pose.position.x, self.ego_pose.position.y
+        gx, gy = self.path_waypoints[-1]
+        if math.hypot(ex - gx, ey - gy) < 2.0:
+            self.get_logger().info('Destination atteinte.')
+            self.target_waypoint = None
+            self.path_waypoints = []
+            self._publish_control(0.0, 1.0, 0.0)
+            return
+
+        if not self.best_control[0] and not self.path_waypoints:
+            return  # Pas de goal, on ne publie rien
+
+        ex, ey = self.ego_pose.position.x, self.ego_pose.position.y
+        yaw_now = get_yaw(self.ego_pose.orientation)
+        fx, fy = math.cos(yaw_now), math.sin(yaw_now)
+        while len(self.path_waypoints) > 1:
+            dx = self.path_waypoints[0][0] - ex
+            dy = self.path_waypoints[0][1] - ey
+            if math.hypot(dx, dy) < 2.0 or (dx*fx + dy*fy) < 0:
+                self.path_waypoints.pop(0)
+            else:
+                break
+
+        # Avancement waypoints
+        yaw_now = get_yaw(self.ego_pose.orientation)
+        fx, fy = math.cos(yaw_now), math.sin(yaw_now)
+        while len(self.path_waypoints) > 1:
+            dx = self.path_waypoints[0][0] - ex
+            dy = self.path_waypoints[0][1] - ey
+            if math.hypot(dx, dy) < 2.0 or (dx*fx + dy*fy) < 0:
+                self.path_waypoints.pop(0)
+            else:
+                break
+
+        v, steer = self.best_control
+        self._publish_control(v, steer, 0.0)
 
     def odom_callback(self, msg: Odometry):
         self.ego_pose = msg.pose.pose
         self.ego_twist = msg.twist.twist
 
     def prediction_callback(self, msg: MarkerArray):
-        if not self.ego_pose:
+        if not self.ego_pose or not self.path_waypoints:
             return
-
         obstacles, ego_prediction = self._parse_marker_array(msg)
-        
-        # Sécurité : Arrêt si l'IA crashe ou ne fournit pas de cap
-        if not ego_prediction or len(ego_prediction) < 5:
-            self.get_logger().warn("Perte du signal de l'IA (Pas de ref Ego). Arrêt.")
-            self._publish_control(0.0, 0.0, 1000.0)
-            return
-
         candidates = self._generate_candidates()
-        
-        best_candidate = None
-        min_cost = float('inf')
-        
-        for candidate in candidates:
-            cost = self._evaluate_cost(candidate, obstacles, ego_prediction)
+        best, min_cost = None, float('inf')
+        for c in candidates:
+            cost = self._evaluate_cost(c, obstacles, ego_prediction)
             if cost < min_cost:
-                min_cost = cost
-                best_candidate = candidate
-
-        if best_candidate:
-            self._publish_visualization(best_candidate)
-            self._publish_control(best_candidate['v'], best_candidate['steer'], min_cost)
+                min_cost, best = cost, c
+        if best:
+            self._publish_visualization(best)
+            self.best_control = (best['v'], best['steer'])
 
     def _parse_marker_array(self, marker_array: MarkerArray):
         obstacles = []
@@ -120,7 +234,9 @@ class MotionPlannerNode(Node):
             if m.color.r > 0.8 and m.color.b < 0.2 and m.color.g < 0.2:
                 ego_prediction = pts
                 continue
-                
+            if m.color.a < 0.5:
+                continue
+                            
             # 2. Filtrage des agents par produit scalaire
             start_x, start_y = pts[0][0], pts[0][1]
             dx = start_x - ego_x
@@ -181,6 +297,21 @@ class MotionPlannerNode(Node):
         return candidates
 
     def _evaluate_cost(self, candidate, obstacles, ego_prediction):
+
+        # 1. Sécurité : Si pas de cible, on renvoie un coût énorme pour forcer l'arrêt
+        if self.target_waypoint is None:
+            return 9999.0
+
+        # 2. Calcul distance cible
+        dist_to_goal = math.hypot(
+            candidate['points'][-1][0] - self.target_waypoint[0],
+            candidate['points'][-1][1] - self.target_waypoint[1]
+        )
+        
+        # 3. Si arrivé (< 2m), on favorise cette trajectoire (-500)
+        if dist_to_goal < 2.0:
+            return -500.0
+        
         cost = candidate['base_cost']
         
         # 1. ÉVALUATION DES OBSTACLES DYNAMIQUES (Time-To-Collision)
@@ -188,54 +319,47 @@ class MotionPlannerNode(Node):
         
         for mode in obstacles:
             for t_idx, ego_pt in enumerate(candidate['points']):
-                if t_idx < len(mode['points']):
-                    agent_pt = mode['points'][t_idx]
-                    dist = math.hypot(ego_pt[0] - agent_pt[0], ego_pt[1] - agent_pt[1])
-                    
-                    if dist < self.safety_distance:
-                        time_future = t_idx * 0.5 
-                        
-                        # Ignorer les collisions au-delà de 4 secondes
-                        # L'environnement aura changé d'ici là
-                        if time_future > 4.0:
-                            break 
-                            
-                        # Pénalité unique, exponentiellement plus forte si l'impact est proche
-                        impact_penalty = 1000.0 * mode['prob'] * math.exp(-0.8 * time_future)
-                        
-                        if impact_penalty > max_collision_cost:
-                            max_collision_cost = impact_penalty
-                            
-                        # On arrête d'évaluer ce tentacule pour cet agent au premier impact
-                        break 
-                    else:
-                        # Rapprochement (Optionnel : maintient un léger écartement)
-                        time_future = t_idx * 0.5
-                        proximity = (1.0 / dist) * mode['prob'] * math.exp(-0.4 * time_future)
-                        cost += proximity
+                if t_idx >= len(mode['points']):
+                    break
+                agent_pt = mode['points'][t_idx]
+                dist = math.hypot(ego_pt[0]-agent_pt[0], ego_pt[1]-agent_pt[1])
+
+                if dist < self.safety_distance:
+                    # Vérifie que la distance diminuait avant l'impact (approche réelle)
+                    if t_idx > 0:
+                        prev_ego   = candidate['points'][t_idx-1]
+                        prev_agent = mode['points'][t_idx-1]
+                        prev_dist  = math.hypot(prev_ego[0]-prev_agent[0],
+                                                prev_ego[1]-prev_agent[1])
+                        if prev_dist <= dist:
+                            # Distance stable ou croissante = agent qui passe, ignore
+                            break
+
+                    time_future = t_idx * 0.5
+                    if time_future > 4.0:
+                        break
+                    impact_penalty = 1000.0 * mode['prob'] * math.exp(-0.8 * time_future)
+                    if impact_penalty > max_collision_cost:
+                        max_collision_cost = impact_penalty
+                    break
+                else:
+                    time_future = t_idx * 0.5
+                    proximity = (1.0 / dist) * mode['prob'] * math.exp(-0.4 * time_future)
+                    cost += proximity
 
         cost += max_collision_cost
 
-        # 2. PURE PURSUIT SPATIAL (Suivi de l'intuition IA)
-        if len(ego_prediction) > 1:
-            ego_x, ego_y = candidate['points'][0][0], candidate['points'][0][1]
-            target_pt = ego_prediction[-1] 
-            
-            # Point de mire ramené de 5.0 à 3.0 mètres
-            for pt in ego_prediction:
+        # 2. ROUTE FOLLOWING (Pure Pursuit sur la route planifiée)
+        if self.path_waypoints:
+            ego_x, ego_y = candidate['points'][0]
+            target_pt = self.path_waypoints[-1]
+            for pt in self.path_waypoints:
                 if math.hypot(pt[0] - ego_x, pt[1] - ego_y) > 3.0:
                     target_pt = pt
                     break
-                    
-            min_dist = float('inf')
-            for cand_pt in candidate['points']:
-                dist = math.hypot(cand_pt[0] - target_pt[0], cand_pt[1] - target_pt[1])
-                if dist < min_dist:
-                    min_dist = dist
-                    
-            capped_dist = min(min_dist, 3.0) 
-            # Pénalité augmentée de 25.0 à 80.0
-            cost += (capped_dist ** 2) * 80.0 
+            min_dist = min(math.hypot(cp[0] - target_pt[0], cp[1] - target_pt[1])
+                        for cp in candidate['points'])
+            cost += min(min_dist, 3.0) ** 2 * 80.0
             
         return cost
             
@@ -262,6 +386,7 @@ class MotionPlannerNode(Node):
                 return
 
         # 2. LOGIQUE NORMALE DU PLANIFICATEUR
+        action_pedale = "Inconnu"
         if min_cost >= 800.0:
             cmd.throttle = 0.0
             cmd.brake = 1.0

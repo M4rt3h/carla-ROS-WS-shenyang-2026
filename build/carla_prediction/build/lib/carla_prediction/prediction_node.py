@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Task 09 — CarlaPrediction ROS2 Node
 Real-time multi-agent trajectory prediction → MarkerArray RViz
@@ -7,31 +6,36 @@ Pipeline: /carla/ego_vehicle/odometry + /carla/objects
        → buffer 20Hz → downsample 2Hz → ego-centric transform
        → VectorNetMapBuilder → CarlaLightningModel → MarkerArray
 """
-import os
-import sys
-import math
-from pathlib import Path
-from collections import deque
 
+#!/usr/bin/env python3
+import os, sys, math
+from pathlib import Path
+
+# ── PATH SETUP ── doit être ICI, avant tout import CarlaPrediction
+_CARLA_PRED = Path.home() / 'Desktop/CarlaPrediction'
+for _p in [_CARLA_PRED, _CARLA_PRED / 'model', _CARLA_PRED / 'map_vis', _CARLA_PRED / 'scripts']:
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
+# ── IMPORTS CARLA PREDICTION ── seulement après
+from train import CarlaLightningModel
+from map_vis.vectormapbuilder import VectorNetMapBuilder
+
+# ── IMPORTS ROS2 ── en dernier
+import rclpy
+from rclpy.node import Node
+from collections import deque
 import numpy as np
 import torch
 import yaml
 import threading
-
-
 from geometry_msgs.msg import PoseStamped
-import rclpy
-from rclpy.node import Node
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import MarkerArray, Marker
 from geometry_msgs.msg import Point
 from builtin_interfaces.msg import Duration
 
 
-_CARLA_PRED = Path.home() / 'Desktop/CarlaPrediction'
-for _p in [_CARLA_PRED, _CARLA_PRED / 'model', _CARLA_PRED / 'map_vis', _CARLA_PRED / 'scripts']:
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
 
 #  derived_object_msgs (optionnel au build, requis au runtime) 
 try:
@@ -40,13 +44,6 @@ try:
 except ImportError:
     _HAS_OBJ_MSG = False
 
-#  CarlaPrediction imports 
-_CARLA_PRED = Path.home() / 'Desktop/CarlaPrediction/'
-sys.path.insert(0, str(_CARLA_PRED))
-sys.path.insert(0, str(_CARLA_PRED / 'model'))
-
-from train import CarlaLightningModel                            # modèle PL
-from map_vis.vectormapbuilder import VectorNetMapBuilder          # carte OSM
 
 
 #  Helpers géométriques (réutilisés depuis 03_scene_mining.py) 
@@ -149,6 +146,9 @@ class CarlaPredictionNode(Node):
         except ImportError:
             self.get_logger().warn('carla_msgs introuvable — multi-town désactivé')
 
+        self.path_waypoints = []
+        self.create_subscription(MarkerArray, '/carla/planning/path', self._path_callback, 10)
+
         #  Buffers 
         # Chaque entrée : {'x': float, 'y': float, 'yaw': float, 'frame': int}
         buf_size = self.raw_fps * 3           # 3 secondes de mémoire brute
@@ -178,6 +178,10 @@ class CarlaPredictionNode(Node):
         self.create_timer(1.0 / hz, self.prediction_timer_callback)
 
         self.get_logger().info('CarlaPredictionNode prêt.')
+
+    def _path_callback(self, msg):
+        if msg.markers:
+            self.path_waypoints = [(p.x, p.y) for p in msg.markers[0].points]
 
     def goal_callback(self, msg: PoseStamped):
         self.target_waypoint = (msg.pose.position.x, -msg.pose.position.y)
@@ -312,9 +316,6 @@ class CarlaPredictionNode(Node):
             # Toutes les coordonnées seront exprimées relativement à cette pose
             ref = ego_frames[-1]   # le plus récent = la position "maintenant"
             ref_pose = (ref['x'], ref['y'], ref['yaw'])
-            if len(self.agent_buffers) > 0:
-                aid = list(self.agent_buffers.keys())[0]
-                buf = self.agent_buffers[aid]
                 
 
             #  4. Historique ego en repère local 
@@ -400,154 +401,84 @@ class CarlaPredictionNode(Node):
         probs     = result['prediction']['probs'].squeeze(0).cpu().numpy()
 
         #  9. Publication 
-        self.pub_traj.publish(self.build_marker_array(pred_traj, probs, ref_pose, agents_past))
+        self.pub_traj.publish(self.build_marker_array(pred_traj, probs, ref_pose, agents_past, agents_mask))
         self.pub_hist.publish(self.build_history_array(ego_frames, close_agents, ref_pose))
 
     #  Construction MarkerArray 
-    def build_marker_array(self, pred_traj, probs, ref_pose, agents_past=None) -> MarkerArray:
-        ma  = MarkerArray()
+    def build_marker_array(self, pred_traj, probs, ref_pose, agents_past=None, agents_mask=None):
+        ma = MarkerArray()
         now = self.get_clock().now().to_msg()
-        lifetime = Duration()
-        lifetime.sec = 1   
         
-
-        for agent_idx in range(pred_traj.shape[0]):
+        # --- 1. TRAJECTOIRES EGO ---
+        # On extrait le mode le plus probable pour l'Ego
+        best_ego_mode = int(np.argmax(probs[0]))
+        
+        for mode_idx in range(pred_traj.shape[1]):
+            m = self._create_line_marker(now, ns="ego_traj", id=mode_idx)
+            is_best = (mode_idx == best_ego_mode)
             
-            # Ignorer les agents vides
-            if np.all(pred_traj[agent_idx, 0, :, :2] == 0.0) and agent_idx > 0:
-                continue
+            # Rouge vif si best, rouge pâle sinon
+            m.color.r, m.color.g, m.color.b = (1.0, 0.0, 0.0) if is_best else (0.5, 0.0, 0.0)
+            m.color.a = 1.0 if is_best else 0.3
+            m.scale.x = 0.3 if is_best else 0.1
+            
+            # Calcul des points et transformation (ici le code de projection)
+            m.points = self._project_traj_to_map(pred_traj[0, mode_idx], ref_pose, 0.0, 0.0)
+            ma.markers.append(m)
 
-            # ========================================================
-            # NOUVELLE LOGIQUE : FILTRAGE DIRECTIONNEL (ANGLES)
-            # ========================================================
-            if agent_idx == 0 and self.target_waypoint is not None:
-                best_mode = 0
-                min_angle_diff = float('inf')
-
-                # 1. Vecteur vers la cible dans le monde CARLA
-                dx_carla = self.target_waypoint[0] - ref_pose[0]
-                dy_carla = self.target_waypoint[1] - ref_pose[1]
-
-                # 2. Rotation vers le repère Local nuScenes (celui de l'IA)
-                angle_rot = (math.pi / 2.0) - ref_pose[2]
-                c, s = math.cos(angle_rot), math.sin(angle_rot)
-                wp_local_x = c * dx_carla - s * dy_carla
-                wp_local_y = s * dx_carla + c * dy_carla
-                
-                # Calcul de l'angle absolu de la cible
-                angle_target = math.atan2(wp_local_y, wp_local_x)
-
-                # 3. On cherche quelle trajectoire IA "pointe" dans cette direction
-                for mode_idx in range(pred_traj.shape[1]):
-                    # On prend le bout du tentacule pour voir sa direction générale
-                    end_pt = pred_traj[0, mode_idx, -1] 
-                    angle_traj = math.atan2(end_pt[1], end_pt[0])
-                    
-                    # Différence angulaire (wrap_to_pi gère le passage de -180 à +180)
-                    diff = abs(wrap_to_pi(angle_target - angle_traj))
-
-                    if diff < min_angle_diff:
-                        min_angle_diff = diff
-                        best_mode = mode_idx
-            else:
-                best_mode = int(np.argmax(probs[agent_idx]))
-            # ========================================================
-
-            prob_softmax = np.exp(probs[agent_idx]) / np.sum(np.exp(probs[agent_idx]))
-
+        # --- 2. TRAJECTOIRES AGENTS ---
+        for agent_idx in range(1, pred_traj.shape[0]):
+            if not agents_mask[agent_idx - 1].any(): continue
+            
+            best_agent_mode = int(np.argmax(probs[agent_idx]))
+            
             for mode_idx in range(pred_traj.shape[1]):
-                traj = pred_traj[agent_idx, mode_idx]
+                m = self._create_line_marker(now, ns="agent_traj", id=agent_idx*10 + mode_idx)
+                is_best = (mode_idx == best_agent_mode)
                 
-                m = Marker()
-                m.header.frame_id = 'map'
-                m.type = Marker.LINE_STRIP
-                m.ns = "path_plan"
-                m.id = 100
-                m.scale.x = 0.5 # Épaisseur du tracé bleu
-                m.color.b = 1.0; m.color.a = 0.8
-                for wp in self.path_waypoints:
-                    p = Point(x=wp[0], y=-wp[1], z=0.1)
-                    m.points.append(p)
-                ma.markers.append(m)
+                m.color.r, m.color.g, m.color.b = (0.0, 0.4, 1.0) # Bleu
+                m.color.a = 1.0 if is_best else 0.2
                 
-                # --- GESTION STRICTE DES COULEURS ---
-                if agent_idx == 0:
-                    if mode_idx == best_mode:
-                        m.color.r, m.color.g, m.color.b = 1.0, 0.0, 0.0
-                        m.color.a = 1.0
-                        m.scale.x = 0.25
-                    else:
-                        m.color.r, m.color.g, m.color.b = 0.5, 0.0, 0.0
-                        m.color.a = max(0.15, float(prob_softmax[mode_idx]))
-                        m.scale.x = 0.15
-                else:
-                    is_cycle = False
-                    if agent_idx <= len(self.agent_buffers):
-                        try:
-                            is_cycle = list(self.agent_types.values())[agent_idx - 1] == 3
-                        except IndexError:
-                            pass
-                    
-                    if is_cycle:
-                        m.color.r, m.color.g, m.color.b = 0.0, 0.9, 0.2 
-                    else:
-                        m.color.r, m.color.g, m.color.b = 0.0, 0.4, 1.0 
-                    
-                    if mode_idx == best_mode:
-                        m.color.a = 1.0
-                        m.scale.x = 0.20
-                    else:
-                        m.color.a = max(0.1, float(prob_softmax[mode_idx]))
-                        m.scale.x = 0.15
-
-                # --- CORRECTION DU CAP (YAW) DES AGENTS ---
-                if agent_idx == 0:
-                    ox, oy, oyaw = 0.0, 0.0, 0.0
-                elif agents_past is not None:
-                    # Coordonnées conservées dans le repère NuScenes-Local (Y=Avant, X=Droite)
-                    ox = float(agents_past[agent_idx - 1, -1, 0])
-                    oy = float(agents_past[agent_idx - 1, -1, 1])
-                    oyaw = float(agents_past[agent_idx - 1, -1, 2])
-                else:
-                    ox, oy, oyaw = 0.0, 0.0, 0.0
-
-                # Précalcul pour la projection finale (Inverse de la rotation pi/2 - yaw)
-                sin_ref = math.sin(ref_pose[2])
-                cos_ref = math.cos(ref_pose[2])
+                ox = float(agents_past[agent_idx - 1, -1, 0])
+                oy = float(agents_past[agent_idx - 1, -1, 1])
+                oyaw = float(agents_past[agent_idx - 1, -1, 2])
                 
-                # Rotation propre à l'agent
-                c_a = math.cos(oyaw)
-                s_a = math.sin(oyaw)
-                
-                for pt in traj:
-                    # Dans le modèle nuScenes, pt[0] = X (Droite), pt[1] = Y (Avant)
-                    pt_x = float(pt[0])
-                    pt_y = float(pt[1])
-                    
-                    # 1. On applique l'orientation de l'agent (en restant dans le monde nuScenes)
-                    x_rot = c_a * pt_x - s_a * pt_y
-                    y_rot = s_a * pt_x + c_a * pt_y
-                    
-                    # 2. On translate à la position de l'agent (toujours en nuScenes-Local)
-                    x_l_nuscenes = x_rot + ox
-                    y_l_nuscenes = y_rot + oy
-                    
-                    # 3. On projette d'un coup dans le repère Global ROS
-                    dx_g = sin_ref * x_l_nuscenes + cos_ref * y_l_nuscenes
-                    dy_g = -cos_ref * x_l_nuscenes + sin_ref * y_l_nuscenes
-                    
-                    x_w = ref_pose[0] + dx_g
-                    y_w = ref_pose[1] + dy_g
-                    
-                    p = Point()
-                    p.x = x_w
-                    p.y = -y_w
-                    p.z = 0.0
-                    m.points.append(p)
-                
+                m.points = self._project_traj_to_map(pred_traj[agent_idx, mode_idx], ref_pose, ox, oy)
                 ma.markers.append(m)
 
+        # --- 3. NAVIGATION (Ligne bleue et Cible) ---
+        if hasattr(self, 'path_waypoints') and self.path_waypoints:
+            m = self._create_line_marker(now, ns="navigation", id=998)
+            m.scale.x = 0.5
+            m.color.b = 1.0; m.color.a = 0.8
+            for wp in self.path_waypoints:
+                m.points.append(Point(x=wp[0], y=wp[1], z=0.1))
+            ma.markers.append(m)
+            
         return ma
+
+    # --- Fonctions utilitaires pour alléger le code ---
+    def _create_line_marker(self, stamp, ns, id):
+        m = Marker()
+        m.header.frame_id = 'map'; m.header.stamp = stamp
+        m.ns = ns; m.id = id
+        m.type = Marker.LINE_STRIP; m.action = Marker.ADD
+        m.lifetime = Duration(sec=1)
+        return m
+
+    def _project_traj_to_map(self, traj, ref_pose, ox, oy, oyaw=0.0):
+        points = []
+        sin_ref = math.sin(ref_pose[2])
+        cos_ref = math.cos(ref_pose[2])
+        for pt in traj:
+            # pt est en repère ego-centrique, ox/oy = offset position agent
+            lx = float(pt[0]) + ox
+            ly = float(pt[1]) + oy
+            # ego-centrique → monde
+            dx_g =  sin_ref * lx + cos_ref * ly
+            dy_g = -cos_ref * lx + sin_ref * ly
+            points.append(Point(x=ref_pose[0] + dx_g, y=-(ref_pose[1] + dy_g), z=0.0))
+        return points
 
 
     def build_history_array(self, ego_frames, close_agents, ref_pose) -> MarkerArray:
