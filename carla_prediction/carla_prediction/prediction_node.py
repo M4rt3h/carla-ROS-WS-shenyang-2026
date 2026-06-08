@@ -18,6 +18,8 @@ import torch
 import yaml
 import threading
 
+
+from geometry_msgs.msg import PoseStamped
 import rclpy
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -54,8 +56,9 @@ def wrap_to_pi(angle: float) -> float:
 
 
 def rotation_global_to_local(x_g, y_g, yaw_ref):
-    """Rotation 2D: repère global → repère local (ego-centric)."""
-    c, s = math.cos(-yaw_ref), math.sin(-yaw_ref)
+    """Rotation 2D: repère global → repère local (convention nuScenes : Y avant)."""
+    angle = (math.pi / 2.0) - yaw_ref
+    c, s = math.cos(angle), math.sin(angle)
     return c * x_g - s * y_g, s * x_g + c * y_g
 
 
@@ -131,6 +134,12 @@ class CarlaPredictionNode(Node):
         self.current_town = Path(osm_path).stem   # ex: "Town03"
         self.map_lock    = threading.Lock()
 
+
+        # À ajouter sous tes autres publishers/subscribers
+        self.target_waypoint = None
+        self.pub_goal = self.create_publisher(Marker, '/carla/prediction/target_goal', 10)
+        self.create_subscription(PoseStamped, '/goal_pose', self.goal_callback, 10)
+
         # Subscriber world_info — détection automatique de la ville
         try:
             from carla_msgs.msg import CarlaWorldInfo
@@ -169,6 +178,27 @@ class CarlaPredictionNode(Node):
         self.create_timer(1.0 / hz, self.prediction_timer_callback)
 
         self.get_logger().info('CarlaPredictionNode prêt.')
+
+    def goal_callback(self, msg: PoseStamped):
+        self.target_waypoint = (msg.pose.position.x, -msg.pose.position.y)
+        self.get_logger().info(f"Cible reçue : {self.target_waypoint}")
+        
+        # --- CRÉATION DU MARQUEUR VISUEL ---
+        m = Marker()
+        m.header = msg.header
+        m.ns = "goal"
+        m.id = 999
+        m.type = Marker.SPHERE
+        m.action = Marker.ADD
+        m.pose = msg.pose
+        m.scale.x = 2.0  # Grosse sphère de 2 mètres
+        m.scale.y = 2.0
+        m.scale.z = 2.0
+        m.color.r = 1.0  # Orange vif
+        m.color.g = 0.5
+        m.color.b = 0.0
+        m.color.a = 0.8
+        self.pub_goal.publish(m)
 
     #  Callback odométrie 
     def odom_callback(self, msg: Odometry):
@@ -379,6 +409,7 @@ class CarlaPredictionNode(Node):
         now = self.get_clock().now().to_msg()
         lifetime = Duration()
         lifetime.sec = 1   
+        
 
         for agent_idx in range(pred_traj.shape[0]):
             
@@ -386,7 +417,42 @@ class CarlaPredictionNode(Node):
             if np.all(pred_traj[agent_idx, 0, :, :2] == 0.0) and agent_idx > 0:
                 continue
 
-            best_mode = int(np.argmax(probs[agent_idx]))
+            # ========================================================
+            # NOUVELLE LOGIQUE : FILTRAGE DIRECTIONNEL (ANGLES)
+            # ========================================================
+            if agent_idx == 0 and self.target_waypoint is not None:
+                best_mode = 0
+                min_angle_diff = float('inf')
+
+                # 1. Vecteur vers la cible dans le monde CARLA
+                dx_carla = self.target_waypoint[0] - ref_pose[0]
+                dy_carla = self.target_waypoint[1] - ref_pose[1]
+
+                # 2. Rotation vers le repère Local nuScenes (celui de l'IA)
+                angle_rot = (math.pi / 2.0) - ref_pose[2]
+                c, s = math.cos(angle_rot), math.sin(angle_rot)
+                wp_local_x = c * dx_carla - s * dy_carla
+                wp_local_y = s * dx_carla + c * dy_carla
+                
+                # Calcul de l'angle absolu de la cible
+                angle_target = math.atan2(wp_local_y, wp_local_x)
+
+                # 3. On cherche quelle trajectoire IA "pointe" dans cette direction
+                for mode_idx in range(pred_traj.shape[1]):
+                    # On prend le bout du tentacule pour voir sa direction générale
+                    end_pt = pred_traj[0, mode_idx, -1] 
+                    angle_traj = math.atan2(end_pt[1], end_pt[0])
+                    
+                    # Différence angulaire (wrap_to_pi gère le passage de -180 à +180)
+                    diff = abs(wrap_to_pi(angle_target - angle_traj))
+
+                    if diff < min_angle_diff:
+                        min_angle_diff = diff
+                        best_mode = mode_idx
+            else:
+                best_mode = int(np.argmax(probs[agent_idx]))
+            # ========================================================
+
             prob_softmax = np.exp(probs[agent_idx]) / np.sum(np.exp(probs[agent_idx]))
 
             for mode_idx in range(pred_traj.shape[1]):
@@ -435,36 +501,40 @@ class CarlaPredictionNode(Node):
                 if agent_idx == 0:
                     ox, oy, oyaw = 0.0, 0.0, 0.0
                 elif agents_past is not None:
-                    # Rétabli : X (0), Y (1) et on récupère le Yaw (2)
+                    # Coordonnées conservées dans le repère NuScenes-Local (Y=Avant, X=Droite)
                     ox = float(agents_past[agent_idx - 1, -1, 0])
                     oy = float(agents_past[agent_idx - 1, -1, 1])
                     oyaw = float(agents_past[agent_idx - 1, -1, 2])
                 else:
                     ox, oy, oyaw = 0.0, 0.0, 0.0
 
-                # Rotation de l'ego-véhicule
-                c = math.cos(ref_pose[2])
-                s = math.sin(ref_pose[2])
+                # Précalcul pour la projection finale (Inverse de la rotation pi/2 - yaw)
+                sin_ref = math.sin(ref_pose[2])
+                cos_ref = math.cos(ref_pose[2])
                 
                 # Rotation propre à l'agent
                 c_a = math.cos(oyaw)
                 s_a = math.sin(oyaw)
                 
                 for pt in traj:
-                    pt_x = float(pt[1])
-                    pt_y = float(pt[0])
+                    # Dans le modèle nuScenes, pt[0] = X (Droite), pt[1] = Y (Avant)
+                    pt_x = float(pt[0])
+                    pt_y = float(pt[1])
                     
-                    # 1. On applique l'orientation de l'agent
+                    # 1. On applique l'orientation de l'agent (en restant dans le monde nuScenes)
                     x_rot = c_a * pt_x - s_a * pt_y
                     y_rot = s_a * pt_x + c_a * pt_y
                     
-                    # 2. On translate à la position de l'agent par rapport à l'Ego
-                    x_l = x_rot + ox
-                    y_l = y_rot + oy
+                    # 2. On translate à la position de l'agent (toujours en nuScenes-Local)
+                    x_l_nuscenes = x_rot + ox
+                    y_l_nuscenes = y_rot + oy
                     
-                    # 3. On repasse le tout dans le repère de la Map
-                    x_w = ref_pose[0] + c * x_l - s * y_l
-                    y_w = ref_pose[1] + s * x_l + c * y_l
+                    # 3. On projette d'un coup dans le repère Global ROS
+                    dx_g = sin_ref * x_l_nuscenes + cos_ref * y_l_nuscenes
+                    dy_g = -cos_ref * x_l_nuscenes + sin_ref * y_l_nuscenes
+                    
+                    x_w = ref_pose[0] + dx_g
+                    y_w = ref_pose[1] + dy_g
                     
                     p = Point()
                     p.x = x_w

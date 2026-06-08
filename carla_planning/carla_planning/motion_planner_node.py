@@ -97,32 +97,44 @@ class MotionPlannerNode(Node):
     def _parse_marker_array(self, marker_array: MarkerArray):
         obstacles = []
         ego_prediction = None
+        
+        if not self.ego_pose:
+            return obstacles, ego_prediction
+
         ego_x = self.ego_pose.position.x
         ego_y = self.ego_pose.position.y
         yaw = get_yaw(self.ego_pose.orientation)
-        
+
+        # Calcul du vecteur directeur de notre voiture (L'avant)
         fx = math.cos(yaw)
         fy = math.sin(yaw)
 
         for m in marker_array.markers:
+            # Type 4 = LINE_STRIP dans RViz
             if m.type != 4 or not m.points:
                 continue
                 
             pts = [(p.x, p.y) for p in m.points]
             
-            # Isolement de la prédiction Ego (Rouge pur)
+            # 1. Isolement de l'intuition IA (La ligne Rouge de l'Ego)
             if m.color.r > 0.8 and m.color.b < 0.2 and m.color.g < 0.2:
                 ego_prediction = pts
                 continue
                 
+            # 2. Filtrage des agents par produit scalaire
             start_x, start_y = pts[0][0], pts[0][1]
             dx = start_x - ego_x
             dy = start_y - ego_y
             
-            # Ignorer les agents derrière
-            if (dx * fx + dy * fy) < 0.0:
+            dot_product = dx * fx + dy * fy
+            
+            # Si l'agent est derrière nous, on l'ignore.
+            # On laisse une tolérance de -2.0 mètres pour ne pas ignorer 
+            # un véhicule qui serait exactement dans notre angle mort.
+            if dot_product < -2.0:
                 continue
                 
+            # L'agent est devant ou sur le côté, on l'ajoute aux calculs de collision
             obstacles.append({'prob': m.color.a, 'points': pts})
             
         return obstacles, ego_prediction
@@ -134,7 +146,8 @@ class MotionPlannerNode(Node):
         base_yaw = get_yaw(self.ego_pose.orientation)
 
         speeds = [self.target_speed, self.target_speed / 2.0, 0.0]
-        steers = [0.0, -0.15, 0.15, -0.4, 0.4] 
+        # Angles de braquage intermédiaires ajoutés
+        steers = [0.0, -0.1, 0.1, -0.25, 0.25, -0.5, 0.5] 
 
         for v in speeds:
             for s in steers:
@@ -155,8 +168,8 @@ class MotionPlannerNode(Node):
                     current_yaw += yaw_rate * step_dist
                 
                 speed_penalty = (self.target_speed - v) * 20.0 
-                # Chute drastique de la pénalité (de 30.0 à 2.0)
-                steer_penalty = abs(s) * 2.0 
+                # Pénalité de braquage ramenée à 0
+                steer_penalty = 0.0 
                 
                 candidates.append({
                     'v': v, 
@@ -170,43 +183,59 @@ class MotionPlannerNode(Node):
     def _evaluate_cost(self, candidate, obstacles, ego_prediction):
         cost = candidate['base_cost']
         
-        # 1. ÉVALUATION DES OBSTACLES DYNAMIQUES
-        for t_idx, ego_pt in enumerate(candidate['points']):
-            time_future = t_idx * 0.5 
-            time_discount = math.exp(-0.4 * time_future) 
-            
-            for mode in obstacles:
+        # 1. ÉVALUATION DES OBSTACLES DYNAMIQUES (Time-To-Collision)
+        max_collision_cost = 0.0
+        
+        for mode in obstacles:
+            for t_idx, ego_pt in enumerate(candidate['points']):
                 if t_idx < len(mode['points']):
                     agent_pt = mode['points'][t_idx]
                     dist = math.hypot(ego_pt[0] - agent_pt[0], ego_pt[1] - agent_pt[1])
                     
                     if dist < self.safety_distance:
-                        cost += 1000.0 * mode['prob'] * time_discount
-                    else:
-                        cost += (1.0 / dist) * mode['prob'] * time_discount
+                        time_future = t_idx * 0.5 
                         
+                        # Ignorer les collisions au-delà de 4 secondes
+                        # L'environnement aura changé d'ici là
+                        if time_future > 4.0:
+                            break 
+                            
+                        # Pénalité unique, exponentiellement plus forte si l'impact est proche
+                        impact_penalty = 1000.0 * mode['prob'] * math.exp(-0.8 * time_future)
+                        
+                        if impact_penalty > max_collision_cost:
+                            max_collision_cost = impact_penalty
+                            
+                        # On arrête d'évaluer ce tentacule pour cet agent au premier impact
+                        break 
+                    else:
+                        # Rapprochement (Optionnel : maintient un léger écartement)
+                        time_future = t_idx * 0.5
+                        proximity = (1.0 / dist) * mode['prob'] * math.exp(-0.4 * time_future)
+                        cost += proximity
+
+        cost += max_collision_cost
+
         # 2. PURE PURSUIT SPATIAL (Suivi de l'intuition IA)
         if len(ego_prediction) > 1:
             ego_x, ego_y = candidate['points'][0][0], candidate['points'][0][1]
-            target_pt = ego_prediction[-1] # Par défaut, le bout de la ligne rouge
+            target_pt = ego_prediction[-1] 
             
-            # On cherche un "point de mire" situé à environ 5 mètres devant le véhicule
+            # Point de mire ramené de 5.0 à 3.0 mètres
             for pt in ego_prediction:
-                if math.hypot(pt[0] - ego_x, pt[1] - ego_y) > 5.0:
+                if math.hypot(pt[0] - ego_x, pt[1] - ego_y) > 3.0:
                     target_pt = pt
                     break
                     
-            # On cherche à quelle distance minimale le tentacule passe de ce point de mire
             min_dist = float('inf')
             for cand_pt in candidate['points']:
                 dist = math.hypot(cand_pt[0] - target_pt[0], cand_pt[1] - target_pt[1])
                 if dist < min_dist:
                     min_dist = dist
                     
-            # Plafonnement de l'erreur spatiale (Max 5 mètres pris en compte)
-            # Évite que l'erreur de suivi de ligne ne dépasse le coût d'une collision (1000)
-            capped_dist = min(min_dist, 5.0) 
-            cost += (capped_dist ** 2) * 25.0 
+            capped_dist = min(min_dist, 3.0) 
+            # Pénalité augmentée de 25.0 à 80.0
+            cost += (capped_dist ** 2) * 80.0 
             
         return cost
             
