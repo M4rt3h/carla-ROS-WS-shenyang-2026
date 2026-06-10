@@ -102,7 +102,7 @@ class CarlaPredictionNode(Node):
         # --- Paramètres ROS2 ---
         self.declare_parameter('model_ckpt', '')
         self.declare_parameter('config_path', str(carla_pred_root / 'config.yaml'))
-        self.declare_parameter('osm_path', str(carla_pred_root / 'map_data/osm/Town03.osm'))
+        self.declare_parameter('osm_path', str(carla_pred_root / 'map_data/osm/Town08.osm'))
         self.declare_parameter('publish_hz', 2.0)
         self.declare_parameter('past_frames', 5)
         self.declare_parameter('raw_fps', 20)

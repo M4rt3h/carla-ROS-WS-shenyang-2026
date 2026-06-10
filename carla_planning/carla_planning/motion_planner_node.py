@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 import sys
-import os
 import math
-import glob
 
 sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI/carla/dist/carla-0.9.15-py3.8-linux-x86_64.egg')
 sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI/carla')
 sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI')
-
-import carla
 
 import carla
 from agents.navigation.global_route_planner import GlobalRoutePlanner
@@ -24,62 +20,56 @@ from std_msgs.msg import Bool
 from carla_msgs.msg import CarlaEgoVehicleControl
 
 
-
 def get_yaw(q):
     siny_cosp = 2 * (q.w * q.z + q.x * q.y)
     cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z)
     return math.atan2(siny_cosp, cosy_cosp)
 
+
 class MotionPlannerNode(Node):
     def __init__(self):
         super().__init__('motion_planner_node')
         
-        # --- Paramètres ---
-        self.declare_parameter('safety_distance', 1.5)
         self.declare_parameter('target_speed', 5.0)
-        self.safety_distance = self.get_parameter('safety_distance').value
-        self.target_speed = self.get_parameter('target_speed').value
-        # --- Paramètres de dynamique (PID & Virage) ---
-        self.declare_parameter('kp', 1.0)           # Agressivité de l'accélération (ex: 0.5 lent, 1.5 brutal)
-        self.declare_parameter('ki', 0.2)           # Correction du maintien de vitesse
-        self.declare_parameter('max_throttle', 1.0) # Plafond de la pédale (1.0 = 100%)
-        self.declare_parameter('cornering_agg', 0.8)# Agressivité du freinage en courbe (plus c'est bas, plus ça passe vite)
+        self.declare_parameter('kp', 1.0)           
+        self.declare_parameter('ki', 0.2)           
+        self.declare_parameter('max_throttle', 1.0) 
+        self.declare_parameter('cornering_agg', 0.8)
         
-        # --- État du système ---
+        self.target_speed = self.get_parameter('target_speed').value
+
         self.ego_pose = None
         self.ego_twist = None
-        self.best_control = (0.0, 0.0)  # (v, steer)
-        self.ego_pose = None
-        self.ego_twist = None
-        self.best_control = (0.0, 0.0)  # (v, steer)
-        self.best_cost = 0.0            # <-- AJOUT : Stockage du niveau de danger
-        self.target_waypoint = None
+        self.best_control = (0.0, 0.0)  
+        self.best_cost = 0.0
         self.target_waypoint = None 
         self.path_waypoints = []
+        self.active_path = []
         
-        # Watchdog (Mécanisme anti-blocage)
+        self.current_lane = 'RIGHT'
+        self.last_lane_change_time = 0.0
+        self._lane_block_count = 0
+        self.dynamic_lane_offset = 0.0
+        
         self.stuck_time = 0.0
         self.recovery_time = 0.0
         self.is_recovering = False
         self.recovery_steer = 0.0
-        self.last_obstacles = []
+        self.speed_integral = 0.0
+        self.is_in_intersection = False
 
-        # --- Subscribers ---
         self.create_subscription(PoseStamped, '/goal_pose', self.goal_callback, 10)
         self.create_subscription(Odometry, '/carla/hero/odometry', self.odom_callback, 10)
         self.create_subscription(MarkerArray, '/carla/prediction/trajectories', self.prediction_callback, 10)
             
-        # --- Publishers ---
         self.pub_cmd = self.create_publisher(CarlaEgoVehicleControl, '/carla/hero/vehicle_control_cmd', 10)
         self.pub_viz = self.create_publisher(Marker, '/carla/planning/chosen_trajectory', 10)
         self.pub_path = self.create_publisher(MarkerArray, '/carla/planning/path', 10)
         
-        # Publishers (Forçage des droits d'accès avec QoS Latched)
         latched_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.pub_autopilot = self.create_publisher(Bool, '/carla/hero/enable_autopilot', latched_qos)
         self.pub_override = self.create_publisher(Bool, '/carla/hero/vehicle_control_manual_override', latched_qos)
 
-        # --- Initialisation CARLA ---
         try:
             self._carla_map = carla.Client('localhost', 2000).get_world().get_map()
             self._grp = GlobalRoutePlanner(self._carla_map, sampling_resolution=4.0)
@@ -88,92 +78,75 @@ class MotionPlannerNode(Node):
             self._grp = None
             self.get_logger().error(f'CARLA connexion échouée: {e}')
 
-        # --- Timers ---
-        self.create_timer(0.1, self._control_loop)  # 10 Hz
+        self.create_timer(0.1, self._control_loop)
 
     def goal_callback(self, msg: PoseStamped):
-        self.target_waypoint = (msg.pose.position.x, -msg.pose.position.y)  # ROS frame, inversion Y
+        self.target_waypoint = (msg.pose.position.x, -msg.pose.position.y)
+        self.current_lane = 'RIGHT'
         self.get_logger().info(f'Nouvelle cible : {self.target_waypoint}')
         self._replan()
 
-    def _smooth_path(self, waypoints, iterations=3):
-        """
-        Lisse une trajectoire 2D en utilisant l'algorithme de Chaikin (Corner Cutting).
-        """
-        if len(waypoints) < 3:
-            return waypoints
-            
-        smooth_path = waypoints
-        for _ in range(iterations):
-            new_path = [smooth_path[0]]  # Conserver le point de départ
-            
-            for i in range(len(smooth_path) - 1):
-                p0 = smooth_path[i]
-                p1 = smooth_path[i+1]
-                
-                # Création de deux nouveaux points à 25% et 75% du segment
-                Q = (0.75 * p0[0] + 0.25 * p1[0], 0.75 * p0[1] + 0.25 * p1[1])
-                R = (0.25 * p0[0] + 0.75 * p1[0], 0.25 * p0[1] + 0.75 * p1[1])
-                
-                new_path.extend([Q, R])
-                
-            new_path.append(smooth_path[-1])  # Conserver le point d'arrivée
-            smooth_path = new_path
-            
-        return smooth_path
+    def odom_callback(self, msg: Odometry):
+        self.ego_pose = msg.pose.pose
+        self.ego_twist = msg.twist.twist
 
-    def _replan(self):
-        if self._grp is None or self.ego_pose is None or self.target_waypoint is None:
+    def prediction_callback(self, msg: MarkerArray):
+        if not self.ego_pose or not self.path_waypoints:
             return
             
-        ex, ey = self.ego_pose.position.x, -self.ego_pose.position.y
-        gx, gy = self.target_waypoint
+        obstacles, _ = self._parse_marker_array(msg)
         
-        # ROS → CARLA : inversion Y
-        start = carla.Location(x=ex, y=ey, z=0.0)
-        end = carla.Location(x=gx, y=gy, z=0.0)
+        # --- MACHINE À ÉTATS (IA & CARTE SÉMANTIQUE HD) ---
+        current_time = self.get_clock().now().nanoseconds / 1e9
+        can_change = (current_time - self.last_lane_change_time) > 4.0 
         
-        try:
-            route = self._grp.trace_route(start, end)
-            raw = [(wp.transform.location.x, -wp.transform.location.y) for wp, _ in route]
-            
-            if not raw:
-                return
+        is_turn, turn_angle = self._is_turn_upcoming(look_ahead_dist=25.0, turn_threshold=0.35)
+        self.is_in_intersection = is_turn  
+        
+        right_path = self.path_waypoints
+        left_path = self._get_offset_path(self.path_waypoints, 3.5)
+        
+        if is_turn:
+            self._lane_block_count = 0
+            if self.current_lane != 'RIGHT':
+                self.current_lane = 'RIGHT'
+                self.last_lane_change_time = current_time
+        elif self.current_lane == 'RIGHT':
+            if self._is_path_blocked(obstacles, right_path, look_ahead_dist=15.0):
+                self._lane_block_count += 1
+                if self._lane_block_count >= 5 and can_change:
+                    # 1. Validation Sémantique (Structure de la route)
+                    if self._is_semantic_lane_valid(direction='LEFT'):
+                        # 2. Validation Dynamique (Prédictions des agents)
+                        if not self._is_path_blocked(obstacles, left_path, look_ahead_dist=30.0):
+                            self.current_lane = 'LEFT'
+                            self.last_lane_change_time = current_time
+                            self._lane_block_count = 0
+                            self.get_logger().info("Dépassement autorisé par la carte HD et initié.")
+            else:
+                self._lane_block_count = 0 
+        else:
+            self._lane_block_count = 0
+            if not self._is_path_blocked(obstacles, right_path, look_ahead_dist=25.0) and can_change:
+                self.current_lane = 'RIGHT'
+                self.last_lane_change_time = current_time
+                self.get_logger().info("Rabattement en cours.")
+        # --------------------------------------------
+
+        candidates = self._generate_candidates()
+        best, min_cost = None, float('inf')
+        
+        for c in candidates:
+            cost = self._evaluate_cost(c, obstacles)
+            if cost < min_cost:
+                min_cost, best = cost, c
                 
-            # 1. Sous-échantillonnage fin (2.0m au lieu de 4.0m) pour mieux capturer la géométrie
-            sampled = [raw[0]]
-            for pt in raw[1:]:
-                if math.hypot(pt[0] - sampled[-1][0], pt[1] - sampled[-1][1]) >= 2.0:
-                    sampled.append(pt)
-                    
-            # 2. Lissage mathématique de la courbe (Chaikin)
-            self.path_waypoints = self._smooth_path(sampled, iterations=3)
-                    
-            self._publish_path()
-            self.get_logger().info(f'Route calculée et lissée : {len(self.path_waypoints)} waypoints.')
-        except Exception as e:
-            self.get_logger().error(f'Replanning échoué: {e}')
-    
-    def _publish_path(self):
-        ma = MarkerArray()
-        m = Marker()
-        m.header.frame_id = 'map'
-        m.header.stamp = self.get_clock().now().to_msg()
-        m.ns = 'planned_path'
-        m.id = 0
-        m.type = Marker.LINE_STRIP
-        m.action = Marker.ADD
-        m.scale.x = 0.25
-        m.color.r, m.color.g, m.color.b, m.color.a = 0.0, 1.0, 0.5, 0.9
-        
-        for wx, wy in self.path_waypoints:
-            m.points.append(Point(x=float(wx), y=float(wy), z=0.1))
-            
-        ma.markers.append(m)
-        self.pub_path.publish(ma)
+        if best:
+            self._publish_visualization(best)
+            self.best_control = (best['v'], best['steer'])
+            self.best_cost = min_cost
 
     def _control_loop(self):
-        # Force ROS control (écrase autopilot)
         msg = Bool()
         msg.data = False
         self.pub_autopilot.publish(msg)
@@ -186,103 +159,66 @@ class MotionPlannerNode(Node):
         ey = self.ego_pose.position.y
         gx, gy = self.path_waypoints[-1]
 
-        # Arrivée détectée (Tolérance : 2.0 mètres)
         if math.hypot(ex - gx, ey - gy) < 2.0:
             self.get_logger().info('Destination atteinte.')
             self.target_waypoint = None
             self.path_waypoints.clear()
+            self.active_path.clear()
             self._publish_control(0.0, 1.0, 0.0)
             return
 
-        # --- NOUVELLE MISE À JOUR ROBUSTE DES WAYPOINTS ---
-        if self.path_waypoints:
-            # On limite la recherche aux 20 prochains points pour ne pas accrocher une route parallèle
-            horizon = min(20, len(self.path_waypoints))
+        self._update_active_path()
+        
+        if self.active_path:
+            horizon = min(20, len(self.active_path))
             closest_idx = 0
             min_dist = float('inf')
             
-            # 1. Trouver le waypoint le plus proche de l'Ego
             for i in range(horizon):
-                dist = math.hypot(self.path_waypoints[i][0] - ex, self.path_waypoints[i][1] - ey)
+                dist = math.hypot(self.active_path[i][0] - ex, self.active_path[i][1] - ey)
                 if dist < min_dist:
                     min_dist = dist
                     closest_idx = i
                     
-            # 2. Supprimer tous les waypoints qui sont "derrière" (avant le point le plus proche)
             self.path_waypoints = self.path_waypoints[closest_idx:]
+            self.active_path = self.active_path[closest_idx:]
             
-            # 3. Si le waypoint actuel est très proche ou sous la voiture (< 2.5m), on l'élimine
-            # pour forcer la voiture à regarder devant elle ("Look-ahead").
-            if len(self.path_waypoints) > 1 and min_dist < 2.5:
+            if len(self.active_path) > 1 and min_dist < 2.5:
                 self.path_waypoints.pop(0)
-
-        # ---------------------------------------------------
-
-        # --- ENVOI AUX PÉDALES ---
+                self.active_path.pop(0)
+                
+        self._publish_path() 
         v, steer = self.best_control
-        self._publish_control(v, steer, self.best_cost) # <-- CORRECTION : Utilisation du vrai coût
+        self._publish_control(v, steer, self.best_cost)
 
-    def odom_callback(self, msg: Odometry):
-        self.ego_pose = msg.pose.pose
-        self.ego_twist = msg.twist.twist
-
-    def prediction_callback(self, msg: MarkerArray):
-        if not self.ego_pose or not self.path_waypoints:
+    def _replan(self):
+        if self._grp is None or self.ego_pose is None or self.target_waypoint is None:
             return
             
-        obstacles, _ = self._parse_marker_array(msg)
-        candidates = self._generate_candidates()
+        ex, ey = self.ego_pose.position.x, -self.ego_pose.position.y
+        gx, gy = self.target_waypoint
         
-        best, min_cost = None, float('inf')
-        for c in candidates:
-            cost = self._evaluate_cost(c, obstacles)
-            if cost < min_cost:
-                min_cost, best = cost, c
-                
-        if best:
-            self._publish_visualization(best)
-            self.best_control = (best['v'], best['steer'])
-            self.best_cost = min_cost  # <-- AJOUT : On mémorise le coût réel
-
-    def _parse_marker_array(self, marker_array: MarkerArray):
-        obstacles = []
-        ego_prediction = None
+        start = carla.Location(x=ex, y=ey, z=0.0)
+        end = carla.Location(x=gx, y=gy, z=0.0)
         
-        if not self.ego_pose:
-            return obstacles, ego_prediction
-
-        ego_x = self.ego_pose.position.x
-        ego_y = self.ego_pose.position.y
-        yaw = get_yaw(self.ego_pose.orientation)
-
-        # Vecteur directeur du véhicule
-        fx = math.cos(yaw)
-        fy = math.sin(yaw)
-
-        for m in marker_array.markers:
-            if m.type != Marker.LINE_STRIP or not m.points:
-                continue
+        try:
+            route = self._grp.trace_route(start, end)
+            raw = [(wp.transform.location.x, -wp.transform.location.y) for wp, _ in route]
+            
+            if not raw:
+                return
                 
-            pts = [(p.x, p.y) for p in m.points]
-            
-            # Isolement de la prédiction de l'Ego (ligne rouge)
-            if m.color.r > 0.8 and m.color.b < 0.2 and m.color.g < 0.2:
-                ego_prediction = pts
-                continue
-                
-            if m.color.a < 0.5:
-                continue
-                            
-            # Filtrage des agents par produit scalaire (ignorer ce qui est derrière)
-            start_x, start_y = pts[0][0], pts[0][1]
-            dx, dy = start_x - ego_x, start_y - ego_y
-            dot_product = dx * fx + dy * fy
-            
-            # Tolérance de -2.0m pour les angles morts
-            if dot_product >= -2.0:
-                obstacles.append({'prob': m.color.a, 'points': pts})
-            
-        return obstacles, ego_prediction
+            sampled = [raw[0]]
+            for pt in raw[1:]:
+                if math.hypot(pt[0] - sampled[-1][0], pt[1] - sampled[-1][1]) >= 2.0:
+                    sampled.append(pt)
+                    
+            self.path_waypoints = self._smooth_path(sampled, iterations=3)
+            self._update_active_path()
+            self._publish_path()
+            self.get_logger().info(f'Route calculée et lissée : {len(self.path_waypoints)} waypoints.')
+        except Exception as e:
+            self.get_logger().error(f'Replanning échoué: {e}')
 
     def _generate_candidates(self):
         candidates = []
@@ -291,9 +227,6 @@ class MotionPlannerNode(Node):
         base_yaw = get_yaw(self.ego_pose.orientation)
 
         target_v = self.get_parameter('target_speed').value
-
-        # Réduction de l'enveloppe de braquage : on supprime les extrêmes (-1.0, 1.0) 
-        # qui causent des embardées suicidaires à haute vitesse.
         steers = [0.0, -0.05, 0.05, -0.15, 0.15, -0.4, 0.4, -0.7, 0.7]
 
         for s in steers:
@@ -301,13 +234,11 @@ class MotionPlannerNode(Node):
             current_yaw = base_yaw
             current_x = x
             current_y = y
-            
             yaw_rate = (target_v / 3.0) * math.tan(s * 0.7) 
             
             t_sim = 0.0
             next_sample = 0.5
             
-            # --- MODIFICATION ICI : On réduit l'horizon à 2.5 secondes (25 itérations) ---
             for _ in range(25):
                 t_sim += 0.1
                 current_x += target_v * 0.1 * math.cos(current_yaw)
@@ -331,7 +262,6 @@ class MotionPlannerNode(Node):
         if self.target_waypoint is None:
             return 9999.0
 
-        # Priorité absolue : vérifier si la trajectoire mène à la cible
         dist_to_goal = math.hypot(
             candidate['points'][-1][0] - self.target_waypoint[0],
             candidate['points'][-1][1] - self.target_waypoint[1]
@@ -347,8 +277,6 @@ class MotionPlannerNode(Node):
 
     def _evaluate_collision_cost(self, candidate, obstacles):
         max_proximity_cost = 0.0
-        
-        # Distance fatale absolue (toutes directions confondues pour éviter les chocs latéraux)
         fatal_dist = 3.0 
 
         for mode in obstacles:
@@ -357,72 +285,58 @@ class MotionPlannerNode(Node):
                     break
                     
                 agent_pt = mode['points'][t_idx]
-                
-                # Coordonnées brutes et Cap
                 dx = agent_pt[0] - ego_pt[0]
                 dy = agent_pt[1] - ego_pt[1]
-                eyaw = ego_pt[2]  # Récupération du Yaw
+                eyaw = ego_pt[2]  
                 
-                # --- NOUVEAU : Projection dans le repère local de l'Ego ---
                 cos_y = math.cos(eyaw)
                 sin_y = math.sin(eyaw)
                 
-                lon = dx * cos_y + dy * sin_y    # Distance devant (+) ou derrière (-)
-                lat = -dx * sin_y + dy * cos_y   # Distance à gauche (+) ou à droite (-)
-
+                lon = dx * cos_y + dy * sin_y
+                lat = -dx * sin_y + dy * cos_y
                 dist = math.hypot(lon, lat)
 
-                # 1. Risque physique d'encastrement (Toutes directions)
                 if dist < fatal_dist:
                     if t_idx < len(candidate['points']) - 1 and t_idx < len(mode['points']) - 1:
                         next_ego = candidate['points'][t_idx+1]
                         next_agent = mode['points'][t_idx+1]
                         next_dist = math.hypot(next_ego[0] - next_agent[0], next_ego[1] - next_agent[1])
-                        
                         if next_dist >= dist - 0.1:
                             continue
-
                     return 9999.0  
                     
-                # 2. Radar ACC (Zone de pression directionnelle)
-                # On ne déclenche l'ACC QUE si l'agent est DEVANT (lon > 0) 
-                # ET dans NOTRE VOIE (|lat| < 1.8m)
                 elif lon > 0.0 and abs(lat) < 1.8:
                     if lon < 12.0:
-                        # Le freinage dépend désormais uniquement de la distance longitudinale
                         cost_p = (800.0 / max(0.5, lon - 2.5)) * mode['prob']
                         max_proximity_cost = max(max_proximity_cost, cost_p)
 
         return max_proximity_cost
 
     def _evaluate_route_following_cost(self, candidate):
-        if not self.path_waypoints:
+        if not self.active_path:
             return 0.0
             
         cte_cost = 0.0
-        local_path = self.path_waypoints[:40]
+        local_path = self.active_path[:40] 
+        base_tolerance = 4.0 if self.is_in_intersection else 2.2
+        
+        current_time = self.get_clock().now().nanoseconds / 1e9
+        if current_time - self.last_lane_change_time < 4.0:
+            base_tolerance = max(base_tolerance, 4.5) 
         
         for t_idx, cp in enumerate(candidate['points']):
-            # On ignore le 3ème élément (yaw) du point pour le calcul de distance
             min_dist = min(math.hypot(cp[0] - wp[0], cp[1] - wp[1]) for wp in local_path)
-            
-            # 1. Pénalité de centrage (Garde la voiture au milieu de sa voie)
             cte_cost += min(min_dist, 5.0) ** 2
             
-            # 2. MUR VIRTUEL DYNAMIQUE (L'entonnoir)
-            # t_idx va de 0 à 4 (puisqu'on a 5 points générés sur 2.5 secondes).
-            # Tolérance = 2.2m au point 0, et grimpe jusqu'à ~3.2m au bout de la ligne.
-            tolerance = 2.2 + (t_idx * 0.25)
-            
+            tolerance = base_tolerance + (t_idx * 0.25)
             if min_dist > tolerance:
                 cte_cost += 1000.0
             
         return cte_cost * 1.5
-            
+
     def _publish_control(self, target_v, target_steer, min_cost):
         cmd = CarlaEgoVehicleControl()
         current_v = math.hypot(self.ego_twist.linear.x, self.ego_twist.linear.y)
-        
         EMERGENCY_COST_THRESHOLD = 800.0
         
         Kp = self.get_parameter('kp').value
@@ -430,7 +344,6 @@ class MotionPlannerNode(Node):
         max_throttle = self.get_parameter('max_throttle').value
         corner_agg = self.get_parameter('cornering_agg').value
 
-        # 1. MACHINE À ÉTATS : DÉGAGEMENT
         if self.is_recovering:
             self.recovery_time -= 0.1 
             if self.recovery_time <= 0:
@@ -446,34 +359,21 @@ class MotionPlannerNode(Node):
                 self.pub_cmd.publish(cmd)
                 return
 
-        # 2. ACC & RALENTISSEMENT (Courbes + Obstacles)
         if target_v > 0.0 and min_cost < EMERGENCY_COST_THRESHOLD:
             cornering_factor = max(0.4, 1.0 - abs(target_steer) * corner_agg)
-            
-            # --- NOUVEAU : Régulateur de distance réactif ---
             obstacle_factor = 1.0
             if min_cost > 100.0:
-                # Dès que le coût baisse sous 800 (la voiture devant avance d'un mètre), 
-                # ce facteur remonte immédiatement pour relancer l'accélération.
                 obstacle_factor = max(0.0, 1.0 - ((min_cost - 100.0) / (EMERGENCY_COST_THRESHOLD - 100.0)))
                 
             target_v = target_v * min(cornering_factor, obstacle_factor)
             
-            # Anti-Zone Morte : On permet le "rampage" fluide dans les bouchons.
-            # Si on veut avancer juste un peu, on force au moins 0.8 m/s pour vaincre l'inertie de la voiture.
             if 0.0 < target_v < 0.8:
                 target_v = 0.8
 
-        # 3. RÉGULATEUR PID
-        if not hasattr(self, 'speed_integral'):
-            self.speed_integral = 0.0
-
         error = target_v - current_v
-        
         self.speed_integral = max(-5.0, min(5.0, self.speed_integral + error * 0.1))
         control_signal = (Kp * error) + (Ki * self.speed_integral)
 
-        # 4. LOGIQUE DES PÉDALES
         action_pedale = "Inconnu"
         
         if min_cost >= EMERGENCY_COST_THRESHOLD or target_v == 0.0:
@@ -490,8 +390,6 @@ class MotionPlannerNode(Node):
             cmd.brake = min(abs(control_signal), 1.0)
             action_pedale = "Freine"
 
-        # 5. WATCHDOG HYBRIDE
-        # On informe le Watchdog qu'un arrêt dû au trafic (target_v tombé à 0) est un arrêt TACTIQUE.
         is_tactically_blocked = (min_cost >= EMERGENCY_COST_THRESHOLD and current_v < 0.1) or (target_v == 0.0 and current_v < 0.1)
         is_physically_blocked = (cmd.throttle > 0.1 and current_v < 0.1)
 
@@ -512,16 +410,36 @@ class MotionPlannerNode(Node):
         else:
             self.stuck_time = 0.0 
 
-        # 6. PUBLICATION NORMALE
         cmd.steer = -target_steer
         cmd.reverse = False
+        cmd.hand_brake = False
+        cmd.manual_gear_shift = False
         
         if min_cost < EMERGENCY_COST_THRESHOLD and target_v > 0.0:
             self.get_logger().info(f"[{action_pedale}] V_cible: {target_v:.1f} | V_réel: {current_v:.1f} | Cost: {min_cost:.0f}")
             
-        cmd.hand_brake = False
-        cmd.manual_gear_shift = False
         self.pub_cmd.publish(cmd)
+
+    def _publish_path(self):
+        if not self.active_path:
+            return
+            
+        ma = MarkerArray()
+        m = Marker()
+        m.header.frame_id = 'map'
+        m.header.stamp = self.get_clock().now().to_msg()
+        m.ns = 'planned_path'
+        m.id = 0
+        m.type = Marker.LINE_STRIP
+        m.action = Marker.ADD
+        m.scale.x = 0.25
+        m.color.r, m.color.g, m.color.b, m.color.a = 0.0, 1.0, 0.5, 0.9
+        
+        for wx, wy in self.active_path:
+            m.points.append(Point(x=float(wx), y=float(wy), z=0.1))
+            
+        ma.markers.append(m)
+        self.pub_path.publish(ma)
 
     def _publish_visualization(self, candidate):
         marker = Marker()
@@ -531,7 +449,6 @@ class MotionPlannerNode(Node):
         marker.id = 0
         marker.type = Marker.LINE_STRIP
         marker.action = Marker.ADD
-        
         marker.scale.x = 0.3 
         marker.color.r = 0.0
         marker.color.g = 1.0
@@ -546,6 +463,172 @@ class MotionPlannerNode(Node):
             marker.points.append(p)
 
         self.pub_viz.publish(marker)
+
+    def _parse_marker_array(self, marker_array: MarkerArray):
+        obstacles = []
+        ego_prediction = None
+        
+        if not self.ego_pose:
+            return obstacles, ego_prediction
+
+        ego_x = self.ego_pose.position.x
+        ego_y = self.ego_pose.position.y
+        yaw = get_yaw(self.ego_pose.orientation)
+        fx = math.cos(yaw)
+        fy = math.sin(yaw)
+
+        for m in marker_array.markers:
+            if m.type != Marker.LINE_STRIP or not m.points:
+                continue
+                
+            pts = [(p.x, p.y) for p in m.points]
+            
+            if m.color.r > 0.8 and m.color.b < 0.2 and m.color.g < 0.2:
+                ego_prediction = pts
+                continue
+                
+            if m.color.a < 0.5:
+                continue
+                            
+            start_x, start_y = pts[0][0], pts[0][1]
+            dx, dy = start_x - ego_x, start_y - ego_y
+            dot_product = dx * fx + dy * fy
+            
+            if dot_product >= -2.0:
+                start_dist = math.hypot(dx, dy)
+                if start_dist < 3.0:   
+                    continue
+                obstacles.append({'prob': m.color.a, 'points': pts})
+            
+        return obstacles, ego_prediction
+
+    def _get_offset_path(self, base_path, offset):
+        if offset == 0.0 or len(base_path) < 2:
+            return list(base_path)
+            
+        offset_path = []
+        for i in range(len(base_path)):
+            if i < len(base_path) - 1:
+                dx = base_path[i+1][0] - base_path[i][0]
+                dy = base_path[i+1][1] - base_path[i][1]
+            else:
+                dx = base_path[i][0] - base_path[i-1][0]
+                dy = base_path[i][1] - base_path[i-1][1]
+                
+            length = math.hypot(dx, dy)
+            if length > 0:
+                nx, ny = -dy / length, dx / length
+                offset_path.append((base_path[i][0] + nx * offset, base_path[i][1] + ny * offset))
+            else:
+                offset_path.append(base_path[i])
+        return offset_path
+
+    def _update_active_path(self):
+        target_offset = 3.5 if self.current_lane == 'LEFT' else 0.0
+        
+        if self.dynamic_lane_offset < target_offset:
+            self.dynamic_lane_offset = min(target_offset, self.dynamic_lane_offset + 0.15)
+        elif self.dynamic_lane_offset > target_offset:
+            self.dynamic_lane_offset = max(target_offset, self.dynamic_lane_offset - 0.15)
+            
+        self.active_path = self._get_offset_path(self.path_waypoints, self.dynamic_lane_offset)
+
+    def _is_path_blocked(self, obstacles, path_to_check, look_ahead_dist=15.0):
+        if not path_to_check or not self.ego_pose:
+            return False
+            
+        ego_x = self.ego_pose.position.x
+        ego_y = self.ego_pose.position.y
+        path_length = 0.0
+        check_points = [path_to_check[0]]
+        
+        for i in range(1, len(path_to_check)):
+            dx = path_to_check[i][0] - path_to_check[i-1][0]
+            dy = path_to_check[i][1] - path_to_check[i-1][1]
+            path_length += math.hypot(dx, dy)
+            check_points.append(path_to_check[i])
+            if path_length > look_ahead_dist:
+                break
+                
+        for mode in obstacles:
+            for t_idx in range(min(5, len(mode['points']))): 
+                obs_pt = mode['points'][t_idx]
+                dist_to_ego = math.hypot(obs_pt[0] - ego_x, obs_pt[1] - ego_y)
+                
+                if dist_to_ego < 4.0:
+                    continue
+                    
+                min_dist = min(math.hypot(obs_pt[0] - wp[0], obs_pt[1] - wp[1]) for wp in check_points)
+                if min_dist < 1.8:  
+                    return True
+                    
+        return False
+
+    def _is_turn_upcoming(self, look_ahead_dist=25.0, turn_threshold=0.35):
+        if len(self.path_waypoints) < 10:
+            return False, 0.0
+            
+        dx_start = self.path_waypoints[2][0] - self.path_waypoints[0][0]
+        dy_start = self.path_waypoints[2][1] - self.path_waypoints[0][1]
+        yaw_start = math.atan2(dy_start, dx_start)
+        
+        dist = 0.0
+        for i in range(len(self.path_waypoints) - 1):
+            dx = self.path_waypoints[i+1][0] - self.path_waypoints[i][0]
+            dy = self.path_waypoints[i+1][1] - self.path_waypoints[i][1]
+            dist += math.hypot(dx, dy)
+            
+            if dist >= look_ahead_dist:
+                yaw_end = math.atan2(dy, dx)
+                diff = (yaw_end - yaw_start + math.pi) % (2 * math.pi) - math.pi
+                if abs(diff) > turn_threshold:
+                    return True, diff  
+                return False, 0.0
+                
+        return False, 0.0
+
+    def _is_semantic_lane_valid(self, direction='LEFT'):
+        """Reproduit le filtrage sémantique HD en validant la géométrie de la voie."""
+        if self._carla_map is None or self.ego_pose is None:
+            return False
+
+        ex = self.ego_pose.position.x
+        ey = -self.ego_pose.position.y # Conversion ROS -> CARLA
+
+        current_wp = self._carla_map.get_waypoint(carla.Location(x=ex, y=ey, z=0.0))
+        if not current_wp:
+            return False
+
+        if direction == 'LEFT':
+            target_wp = current_wp.get_left_lane()
+        else:
+            target_wp = current_wp.get_right_lane()
+
+        # Validation de l'existence de la voie et de son type (carrossable)
+        if target_wp and target_wp.lane_type == carla.LaneType.Driving:
+            # Vérification du contresens : les identifiants de voie doivent être de même signe
+            if current_wp.lane_id * target_wp.lane_id > 0:
+                return True
+
+        return False
+
+    def _smooth_path(self, waypoints, iterations=3):
+        if len(waypoints) < 3:
+            return waypoints
+            
+        smooth_path = waypoints
+        for _ in range(iterations):
+            new_path = [smooth_path[0]] 
+            for i in range(len(smooth_path) - 1):
+                p0 = smooth_path[i]
+                p1 = smooth_path[i+1]
+                Q = (0.75 * p0[0] + 0.25 * p1[0], 0.75 * p0[1] + 0.25 * p1[1])
+                R = (0.25 * p0[0] + 0.75 * p1[0], 0.25 * p0[1] + 0.75 * p1[1])
+                new_path.extend([Q, R])
+            new_path.append(smooth_path[-1])
+            smooth_path = new_path
+            
+        return smooth_path
 
 
 def main(args=None):

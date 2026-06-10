@@ -97,7 +97,7 @@ open_t "CARLA Simulator" "t1" "cd \"$CARLA_PATH\" && ./CarlaUE4.sh -RenderOffScr
 wait_bar 8 "Démarrage CARLA..."
 
 echo -e "${B}▶ [2/6]${N} ROS2 Bridge"
-open_t "carla_ros_bridge" "t2" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_ros_bridge carla_ros_bridge_with_example_ego_vehicle.launch.py"
+open_t "carla_ros_bridge" "t2" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_ros_bridge carla_ros_bridge_with_example_ego_vehicle.launch.py town:='Town04'"
 wait_bar 12 "Démarrage bridge..."
 
 echo -e "${B}▶ [3/6]${N} Trafic NPC"
