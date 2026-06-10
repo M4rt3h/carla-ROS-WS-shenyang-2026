@@ -101,7 +101,7 @@ open_t "carla_ros_bridge" "t2" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_r
 wait_bar 12 "Démarrage bridge..."
 
 echo -e "${B}▶ [3/6]${N} Trafic NPC"
-open_t "NPC Traffic" "t3" "cd \"$CARLA_PATH/PythonAPI/examples\" && source $HOME/miniconda3/etc/profile.d/conda.sh && conda activate carla_env && PYTHONPATH=\"$CARLA_EGG:\$PYTHONPATH\" python3 generate_traffic.py -n 50 -w 10 --safe --asynch"
+open_t "NPC Traffic" "t3" "cd \"$CARLA_PATH/PythonAPI/examples\" && source $HOME/miniconda3/etc/profile.d/conda.sh && conda activate carla_env && PYTHONPATH=\"$CARLA_EGG:\$PYTHONPATH\" python3 generate_traffic.py -n 100 -w 10 --safe --asynch"
 wait_bar 3 "Spawn NPC..."
 
 echo -e "${B}▶ [4/6]${N} Prediction node"

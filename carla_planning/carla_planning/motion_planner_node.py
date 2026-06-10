@@ -292,9 +292,9 @@ class MotionPlannerNode(Node):
 
         target_v = self.get_parameter('target_speed').value
 
-        # 1. Éventail complet : On autorise la voiture à tourner le volant à 100%
-        # L'ajout des extrêmes (-1.0, 1.0) et des intermédiaires permet de corriger finement la dérive.
-        steers = [0.0, -0.1, 0.1, -0.3, 0.3, -0.6, 0.6, -1.0, 1.0]
+        # Réduction de l'enveloppe de braquage : on supprime les extrêmes (-1.0, 1.0) 
+        # qui causent des embardées suicidaires à haute vitesse.
+        steers = [0.0, -0.05, 0.05, -0.15, 0.15, -0.4, 0.4, -0.7, 0.7]
 
         for s in steers:
             pts = []
@@ -302,27 +302,27 @@ class MotionPlannerNode(Node):
             current_x = x
             current_y = y
             
-            # 2. Raccourcissement de l'horizon de prédiction spatiale
-            # Au lieu de prévoir sur 6 secondes (ce qui donne des tentacules géants à haute vitesse),
-            # on force des pas plus courts. À 5 m/s, le tentacule fera ~12 mètres (parfait pour un virage).
-            step_dist = max(1.0, target_v * 0.2) 
+            yaw_rate = (target_v / 3.0) * math.tan(s * 0.7) 
             
-            # 3. Rayon de braquage mathématique ajusté
-            # Ce multiplicateur (0.35) traduit l'angle du volant en courbure physique par mètre parcouru.
-            # Il permet de générer des trajectoires en arc de cercle suffisamment serrées.
-            yaw_rate = s * 0.35 
+            t_sim = 0.0
+            next_sample = 0.5
             
-            for _ in range(12):
-                current_x += step_dist * math.cos(current_yaw)
-                current_y += step_dist * math.sin(current_yaw)
-                pts.append((current_x, current_y))
-                current_yaw += yaw_rate * step_dist
+            # --- MODIFICATION ICI : On réduit l'horizon à 2.5 secondes (25 itérations) ---
+            for _ in range(25):
+                t_sim += 0.1
+                current_x += target_v * 0.1 * math.cos(current_yaw)
+                current_y += target_v * 0.1 * math.sin(current_yaw)
+                current_yaw += yaw_rate * 0.1
+                
+                if t_sim >= next_sample - 0.01:
+                    pts.append((current_x, current_y, current_yaw)) 
+                    next_sample += 0.5
             
             candidates.append({
                 'v': target_v, 
                 'steer': s, 
                 'points': pts, 
-                'base_cost': 0.0  # La pénalité de vitesse est gérée par le régulateur PI
+                'base_cost': 0.0 
             })
             
         return candidates
@@ -346,10 +346,10 @@ class MotionPlannerNode(Node):
         return cost
 
     def _evaluate_collision_cost(self, candidate, obstacles):
-        max_collision_cost = 0.0
-        proximity_cost = 0.0
+        max_proximity_cost = 0.0
         
-        actual_safety_dist = max(2.5, self.safety_distance)
+        # Distance fatale absolue (toutes directions confondues pour éviter les chocs latéraux)
+        fatal_dist = 3.0 
 
         for mode in obstacles:
             for t_idx, ego_pt in enumerate(candidate['points']):
@@ -357,38 +357,66 @@ class MotionPlannerNode(Node):
                     break
                     
                 agent_pt = mode['points'][t_idx]
-                dist = math.hypot(ego_pt[0] - agent_pt[0], ego_pt[1] - agent_pt[1])
+                
+                # Coordonnées brutes et Cap
+                dx = agent_pt[0] - ego_pt[0]
+                dy = agent_pt[1] - ego_pt[1]
+                eyaw = ego_pt[2]  # Récupération du Yaw
+                
+                # --- NOUVEAU : Projection dans le repère local de l'Ego ---
+                cos_y = math.cos(eyaw)
+                sin_y = math.sin(eyaw)
+                
+                lon = dx * cos_y + dy * sin_y    # Distance devant (+) ou derrière (-)
+                lat = -dx * sin_y + dy * cos_y   # Distance à gauche (+) ou à droite (-)
 
-                if dist < actual_safety_dist:
-                    time_future = t_idx * 0.5
+                dist = math.hypot(lon, lat)
 
-                    if time_future < 2.5:
-                        return 9999.0  
+                # 1. Risque physique d'encastrement (Toutes directions)
+                if dist < fatal_dist:
+                    if t_idx < len(candidate['points']) - 1 and t_idx < len(mode['points']) - 1:
+                        next_ego = candidate['points'][t_idx+1]
+                        next_agent = mode['points'][t_idx+1]
+                        next_dist = math.hypot(next_ego[0] - next_agent[0], next_ego[1] - next_agent[1])
                         
-                    impact_penalty = 1000.0 / time_future
-                    max_collision_cost = max(max_collision_cost, impact_penalty)
-                    break
-                else:
-                    time_future = t_idx * 0.5
-                    if dist < actual_safety_dist * 3.0:
-                        proximity_cost += (1.0 / dist) * mode['prob'] * 50.0
+                        if next_dist >= dist - 0.1:
+                            continue
 
-        return max_collision_cost + proximity_cost
+                    return 9999.0  
+                    
+                # 2. Radar ACC (Zone de pression directionnelle)
+                # On ne déclenche l'ACC QUE si l'agent est DEVANT (lon > 0) 
+                # ET dans NOTRE VOIE (|lat| < 1.8m)
+                elif lon > 0.0 and abs(lat) < 1.8:
+                    if lon < 12.0:
+                        # Le freinage dépend désormais uniquement de la distance longitudinale
+                        cost_p = (800.0 / max(0.5, lon - 2.5)) * mode['prob']
+                        max_proximity_cost = max(max_proximity_cost, cost_p)
+
+        return max_proximity_cost
 
     def _evaluate_route_following_cost(self, candidate):
         if not self.path_waypoints:
             return 0.0
             
         cte_cost = 0.0
-        local_path = self.path_waypoints[:15]
+        local_path = self.path_waypoints[:40]
         
-        for cp in candidate['points']:
+        for t_idx, cp in enumerate(candidate['points']):
+            # On ignore le 3ème élément (yaw) du point pour le calcul de distance
             min_dist = min(math.hypot(cp[0] - wp[0], cp[1] - wp[1]) for wp in local_path)
             
-            # Plafond à 5.0 mètres pour éviter une explosion quadratique exponentielle
+            # 1. Pénalité de centrage (Garde la voiture au milieu de sa voie)
             cte_cost += min(min_dist, 5.0) ** 2
             
-        # Facteur de multiplication légèrement adouci
+            # 2. MUR VIRTUEL DYNAMIQUE (L'entonnoir)
+            # t_idx va de 0 à 4 (puisqu'on a 5 points générés sur 2.5 secondes).
+            # Tolérance = 2.2m au point 0, et grimpe jusqu'à ~3.2m au bout de la ligne.
+            tolerance = 2.2 + (t_idx * 0.25)
+            
+            if min_dist > tolerance:
+                cte_cost += 1000.0
+            
         return cte_cost * 1.5
             
     def _publish_control(self, target_v, target_steer, min_cost):
@@ -397,13 +425,12 @@ class MotionPlannerNode(Node):
         
         EMERGENCY_COST_THRESHOLD = 800.0
         
-        # --- Lecture des paramètres ROS2 (Modularité) ---
         Kp = self.get_parameter('kp').value
         Ki = self.get_parameter('ki').value
         max_throttle = self.get_parameter('max_throttle').value
         corner_agg = self.get_parameter('cornering_agg').value
 
-        # 1. MACHINE À ÉTATS : DÉGAGEMENT (inchangé)
+        # 1. MACHINE À ÉTATS : DÉGAGEMENT
         if self.is_recovering:
             self.recovery_time -= 0.1 
             if self.recovery_time <= 0:
@@ -419,11 +446,23 @@ class MotionPlannerNode(Node):
                 self.pub_cmd.publish(cmd)
                 return
 
-        # 2. RALENTISSEMENT EN COURBE (Ajustable)
+        # 2. ACC & RALENTISSEMENT (Courbes + Obstacles)
         if target_v > 0.0 and min_cost < EMERGENCY_COST_THRESHOLD:
-            # Plus 'corner_agg' est faible, moins la voiture ralentit
-            cornering_factor = max(0.5, 1.0 - abs(target_steer) * corner_agg)
-            target_v = target_v * cornering_factor
+            cornering_factor = max(0.4, 1.0 - abs(target_steer) * corner_agg)
+            
+            # --- NOUVEAU : Régulateur de distance réactif ---
+            obstacle_factor = 1.0
+            if min_cost > 100.0:
+                # Dès que le coût baisse sous 800 (la voiture devant avance d'un mètre), 
+                # ce facteur remonte immédiatement pour relancer l'accélération.
+                obstacle_factor = max(0.0, 1.0 - ((min_cost - 100.0) / (EMERGENCY_COST_THRESHOLD - 100.0)))
+                
+            target_v = target_v * min(cornering_factor, obstacle_factor)
+            
+            # Anti-Zone Morte : On permet le "rampage" fluide dans les bouchons.
+            # Si on veut avancer juste un peu, on force au moins 0.8 m/s pour vaincre l'inertie de la voiture.
+            if 0.0 < target_v < 0.8:
+                target_v = 0.8
 
         # 3. RÉGULATEUR PID
         if not hasattr(self, 'speed_integral'):
@@ -431,7 +470,6 @@ class MotionPlannerNode(Node):
 
         error = target_v - current_v
         
-        # Limite anti-windup élargie pour permettre une correction en côte forte
         self.speed_integral = max(-5.0, min(5.0, self.speed_integral + error * 0.1))
         control_signal = (Kp * error) + (Ki * self.speed_integral)
 
@@ -442,33 +480,29 @@ class MotionPlannerNode(Node):
             cmd.throttle = 0.0
             cmd.brake = 1.0
             self.speed_integral = 0.0
-            action_pedale = "Arrêt absolu"
-            
-            # Affichage du coût pour identifier la source du blocage
-            self.get_logger().info(f"[{action_pedale}] V_cible: 0.0 | Cost: {min_cost:.0f}")
-            
+            action_pedale = "Arrêt"
         elif control_signal > 0:
-            # Accélération libérée jusqu'au max_throttle (1.0 par défaut)
             cmd.throttle = min(control_signal, max_throttle)
             cmd.brake = 0.0
-            action_pedale = "Accélération"
-            
+            action_pedale = "Accélère"
         else:
             cmd.throttle = 0.0
             cmd.brake = min(abs(control_signal), 1.0)
-            action_pedale = "Freinage"
+            action_pedale = "Freine"
 
         # 5. WATCHDOG HYBRIDE
-        is_tactically_blocked = (min_cost >= EMERGENCY_COST_THRESHOLD and current_v < 0.1)
+        # On informe le Watchdog qu'un arrêt dû au trafic (target_v tombé à 0) est un arrêt TACTIQUE.
+        is_tactically_blocked = (min_cost >= EMERGENCY_COST_THRESHOLD and current_v < 0.1) or (target_v == 0.0 and current_v < 0.1)
         is_physically_blocked = (cmd.throttle > 0.1 and current_v < 0.1)
 
-        if is_tactically_blocked or is_physically_blocked:
-            self.stuck_time += 0.
+        if is_physically_blocked and not is_tactically_blocked:
+            self.stuck_time += 0.1
             if self.stuck_time >= 4.0:
                 self.is_recovering = True
                 self.recovery_time = 3.0 
                 self.recovery_steer = -0.7 if target_steer > 0.05 else 0.7
                 
+                self.get_logger().warn("Blocage physique. Dégagement...")
                 cmd.throttle = 0.5
                 cmd.brake = 0.0
                 cmd.steer = self.recovery_steer
@@ -482,8 +516,8 @@ class MotionPlannerNode(Node):
         cmd.steer = -target_steer
         cmd.reverse = False
         
-        if min_cost < EMERGENCY_COST_THRESHOLD:
-            self.get_logger().info(f"[{action_pedale}] V_cible: {target_v:.1f} | V_réel: {current_v:.1f} | Thr: {cmd.throttle:.2f}")
+        if min_cost < EMERGENCY_COST_THRESHOLD and target_v > 0.0:
+            self.get_logger().info(f"[{action_pedale}] V_cible: {target_v:.1f} | V_réel: {current_v:.1f} | Cost: {min_cost:.0f}")
             
         cmd.hand_brake = False
         cmd.manual_gear_shift = False
