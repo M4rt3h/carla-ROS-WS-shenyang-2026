@@ -80,6 +80,7 @@ cleanup() {
     pkill -f "prediction_node"              2>/dev/null
     pkill -f "map_visualization"            2>/dev/null
     pkill -f "planning_visualization"       2>/dev/null
+    pkill -f "traffic_sign_node"            2>/dev/null
     pkill -f "rviz2"                        2>/dev/null
     rm -rf "$PID_DIR"
     echo -e "${G}✅ Tout arrêté.${N}"
@@ -149,9 +150,13 @@ echo -e "${B}▶ [5/7]${N} Map visualization"
 open_t "carla_map_visualization" "t5" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_map_visualization map_visualization.launch.py"
 wait_bar 2 "Chargement map..."
 
-echo -e "${B}▶ [6/7]${N} Planning node"
-open_t "carla_planning" "t6" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_planning planning_visualization.launch.py"
+echo -e "${B}▶ [6a/7]${N} Planning node"
+open_t "carla_planning" "t6a" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_planning planning_visualization.launch.py"
 wait_bar 2 "Chargement planning..."
+
+echo -e "${B}▶ [6b/7]${N} Traffic sign node"
+open_t "traffic_sign" "t6b" "$ROS_SOURCE && ros2 run carla_planning traffic_sign_node --ros-args -p debug_image:=true"
+wait_bar 1 "Chargement traffic sign..."
 
 echo -e "${B}▶ [7/7]${N} RViz2"
 sleep 4

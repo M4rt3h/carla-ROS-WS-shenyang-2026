@@ -35,7 +35,7 @@ from rclpy.qos import QoSProfile, DurabilityPolicy
 from visualization_msgs.msg import MarkerArray, Marker
 from geometry_msgs.msg import Point, PoseStamped
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from carla_msgs.msg import CarlaEgoVehicleControl, CarlaWorldInfo
 
 
@@ -95,7 +95,11 @@ class MotionPlannerNode(Node):
         self.current_town = None
         self._carla_map = None
         self._grp = None
-        
+
+        self._traffic_state = 'unknown'
+        self.create_subscription(String, '/carla/perception/traffic_state',
+            lambda msg: setattr(self, '_traffic_state', msg.data), 10)
+                
         latched_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_callback, latched_qos)
 
@@ -125,7 +129,11 @@ class MotionPlannerNode(Node):
     def prediction_callback(self, msg: MarkerArray):
         if not self.ego_pose or not self.path_waypoints:
             return
-            
+        
+        if self._get_traffic_light_state() in ('red', 'stop'):
+            self.best_control = (0.0, 0.0)
+            return
+        
         obstacles, _ = self._parse_marker_array(msg)
         
         # --- MACHINE À ÉTATS (IA & CARTE SÉMANTIQUE HD) ---
@@ -252,13 +260,21 @@ class MotionPlannerNode(Node):
         except Exception as e:
             self.get_logger().error(f'Replanning échoué: {e}')
 
+    def _get_traffic_light_state(self) -> str:
+        return self._traffic_state
+
     def _generate_candidates(self):
         candidates = []
         x = self.ego_pose.position.x
         y = self.ego_pose.position.y
         base_yaw = get_yaw(self.ego_pose.orientation)
 
+        state = self._get_traffic_light_state()
+        if state in ('red', 'stop'):
+            return []
         target_v = self.get_parameter('target_speed').value
+        if state == 'yellow':
+            target_v *= 0.3
         steers = [0.0, -0.05, 0.05, -0.15, 0.15, -0.4, 0.4, -0.7, 0.7]
 
         for s in steers:
@@ -368,7 +384,7 @@ class MotionPlannerNode(Node):
 
     def _publish_dashboard(self, current_v, target_v, action_pedale, min_cost):
         # Rendu "flat design" avec OpenCV
-        img = np.zeros((200, 350, 3), dtype=np.uint8)
+        img = np.zeros((210, 350, 3), dtype=np.uint8)
         img[:] = (35, 35, 35) # Fond gris anthracite
         
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -397,9 +413,23 @@ class MotionPlannerNode(Node):
         # --- Ligne 3 : Coût et Intersections ---
         color_cost = (0, 100, 255) if min_cost >= 800.0 else (0, 200, 100)
         cv2.putText(img, f"Cout : {min_cost:.0f}", (15, 170), font, 0.5, color_cost, 1)
-        
+
         if self.is_in_intersection:
             cv2.putText(img, "INTERSECTION", (180, 170), font, 0.5, (255, 200, 0), 1)
+
+        # --- Ligne 4 : Feux / Signalisation ---
+        state = self._traffic_state
+        state_color = {
+            'red':     (0,   0,   220),
+            'yellow':  (0,   200, 220),
+            'green':   (0,   200, 0),
+            'stop':    (0,   0,   220),
+            'unknown': (120, 120, 120),
+        }.get(state, (120, 120, 120))
+
+        # Pastille colorée + texte
+        cv2.circle(img, (25, 193), 8, state_color, -1)
+        cv2.putText(img, state.upper(), (40, 198), font, 0.5, state_color, 1)
 
         # --- Publication ---
         img_msg = self.cv_bridge.cv2_to_imgmsg(img, encoding="bgr8")

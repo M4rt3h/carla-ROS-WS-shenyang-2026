@@ -22,7 +22,8 @@ setup(
     license='MIT',
     entry_points={
         'console_scripts': [
-            'motion_planner_node = carla_planning.motion_planner_node:main'
+            'motion_planner_node = carla_planning.motion_planner_node:main',
+            'traffic_sign_node = carla_planning.traffic_sign_node:main'
         ],
     },
 )
