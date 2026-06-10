@@ -14,6 +14,7 @@ import math
 import threading
 from pathlib import Path
 from collections import deque
+from rclpy.qos import QoSProfile, DurabilityPolicy
 
 import numpy as np
 import yaml
@@ -102,16 +103,15 @@ class CarlaPredictionNode(Node):
         # --- Paramètres ROS2 ---
         self.declare_parameter('model_ckpt', '')
         self.declare_parameter('config_path', str(carla_pred_root / 'config.yaml'))
-        self.declare_parameter('osm_path', str(carla_pred_root / 'map_data/osm/Town08.osm'))
         self.declare_parameter('publish_hz', 2.0)
         self.declare_parameter('past_frames', 5)
         self.declare_parameter('raw_fps', 20)
         self.declare_parameter('max_agents', 10)
         self.declare_parameter('max_agent_distance', 50.0)
 
-        ckpt = self.get_parameter('model_ckpt').value
+        # Extraction forcée en chaîne de caractères pour éviter un conflit si le YAML est mal lu
+        ckpt = self.get_parameter('model_ckpt').get_parameter_value().string_value
         cfg_path = self.get_parameter('config_path').value
-        osm_path = self.get_parameter('osm_path').value
         hz = self.get_parameter('publish_hz').value
 
         self.past_frames = self.get_parameter('past_frames').value
@@ -134,11 +134,10 @@ class CarlaPredictionNode(Node):
             self.get_logger().warn('Pas de checkpoint — inférence désactivée (dry-run OK)')
 
         # --- Initialisation Carte OSM ---
-        self.map_builder = VectorNetMapBuilder(osm_path)
+        self.map_builder = None
         self.osm_dir = carla_pred_root / 'map_data/osm'
-        self.current_town = Path(osm_path).stem
+        self.current_town = None
         self.map_lock = threading.Lock()
-        self.get_logger().info(f'Carte OSM chargée : {osm_path}')
 
         # --- Variables d'état et Buffers ---
         self.target_waypoint = None
@@ -167,7 +166,8 @@ class CarlaPredictionNode(Node):
 
         try:
             from carla_msgs.msg import CarlaWorldInfo
-            self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_callback, 10)
+            latched_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+            self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_callback, latched_qos)
         except ImportError:
             self.get_logger().warn('carla_msgs introuvable — multi-town désactivé')
 
@@ -345,6 +345,8 @@ class CarlaPredictionNode(Node):
 
         # 4. Carte OSM
         with self.map_lock:
+            if self.map_builder is None:
+                return None
             map_data = self.map_builder.build(ref_pose)
 
         # 5. Helper de conversion NumPy -> Tenseur PyTorch (Batch B=1)

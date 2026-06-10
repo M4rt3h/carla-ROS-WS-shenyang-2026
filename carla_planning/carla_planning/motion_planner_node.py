@@ -1,10 +1,29 @@
 #!/usr/bin/env python3
 import sys
 import math
+import cv2
+import numpy as np
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+import os
+import glob
 
-sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI/carla/dist/carla-0.9.15-py3.8-linux-x86_64.egg')
-sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI/carla')
-sys.path.insert(0, '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.15/PythonAPI')
+# Détection du chemin CARLA (variable d'environnement ou fallback sur la version 0.9.13)
+carla_root = os.environ.get('CARLA_ROOT', '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.13')
+carla_api_path = os.path.join(carla_root, 'PythonAPI', 'carla')
+
+# Injection des chemins pour trouver le dossier 'agents'
+sys.path.insert(0, carla_api_path)
+sys.path.insert(0, os.path.join(carla_root, 'PythonAPI'))
+
+# Recherche et injection automatique du bon fichier .egg selon la version de Python
+try:
+    sys.path.insert(0, glob.glob(os.path.join(carla_api_path, 'dist', 'carla-*%d.%d-%s.egg' % (
+        sys.version_info.major,
+        sys.version_info.minor,
+        'win-amd64' if os.name == 'nt' else 'linux-x86_64')))[0])
+except IndexError:
+    pass
 
 import carla
 from agents.navigation.global_route_planner import GlobalRoutePlanner
@@ -17,7 +36,7 @@ from visualization_msgs.msg import MarkerArray, Marker
 from geometry_msgs.msg import Point, PoseStamped
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool
-from carla_msgs.msg import CarlaEgoVehicleControl
+from carla_msgs.msg import CarlaEgoVehicleControl, CarlaWorldInfo
 
 
 def get_yaw(q):
@@ -70,15 +89,28 @@ class MotionPlannerNode(Node):
         self.pub_autopilot = self.create_publisher(Bool, '/carla/hero/enable_autopilot', latched_qos)
         self.pub_override = self.create_publisher(Bool, '/carla/hero/vehicle_control_manual_override', latched_qos)
 
-        try:
-            self._carla_map = carla.Client('localhost', 2000).get_world().get_map()
-            self._grp = GlobalRoutePlanner(self._carla_map, sampling_resolution=4.0)
-            self.get_logger().info('GlobalRoutePlanner initialisé.')
-        except Exception as e:
-            self._grp = None
-            self.get_logger().error(f'CARLA connexion échouée: {e}')
+        self.pub_dash = self.create_publisher(Image, '/carla/planning/dashboard', 10)
+        self.cv_bridge = CvBridge()
+
+        self.current_town = None
+        self._carla_map = None
+        self._grp = None
+        
+        latched_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_callback, latched_qos)
 
         self.create_timer(0.1, self._control_loop)
+
+    def world_info_callback(self, msg):
+        town = msg.map_name.split('/')[-1]
+        if town != self.current_town:
+            try:
+                self._carla_map = carla.Client('localhost', 2000).get_world().get_map()
+                self._grp = GlobalRoutePlanner(self._carla_map, sampling_resolution=4.0)
+                self.current_town = town
+                self.get_logger().info(f'GlobalRoutePlanner mis à jour pour : {town}')
+            except Exception as e:
+                self.get_logger().error(f'Erreur de mise à jour topologique : {e}')
 
     def goal_callback(self, msg: PoseStamped):
         self.target_waypoint = (msg.pose.position.x, -msg.pose.position.y)
@@ -334,6 +366,45 @@ class MotionPlannerNode(Node):
             
         return cte_cost * 1.5
 
+    def _publish_dashboard(self, current_v, target_v, action_pedale, min_cost):
+        # Rendu "flat design" avec OpenCV
+        img = np.zeros((200, 350, 3), dtype=np.uint8)
+        img[:] = (35, 35, 35) # Fond gris anthracite
+        
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        
+        # --- En-tête ---
+        cv2.rectangle(img, (0, 0), (350, 40), (50, 50, 50), -1)
+        cv2.putText(img, "HUD - PLANIFICATEUR", (15, 25), font, 0.6, (255, 255, 255), 2)
+        
+        # --- Ligne 1 : Vitesse ---
+        v_ratio = min(1.0, current_v / max(0.1, target_v)) if target_v > 0 else 0.0
+        cv2.putText(img, f"Vitesse : {current_v:.1f} / {target_v:.1f} m/s", (15, 75), font, 0.5, (220, 220, 220), 1)
+        # Barre de progression
+        cv2.rectangle(img, (15, 85), (335, 95), (60, 60, 60), -1)
+        cv2.rectangle(img, (15, 85), (15 + int(320 * v_ratio), 95), (0, 200, 100), -1)
+        
+        # --- Ligne 2 : État et Action ---
+        cv2.putText(img, f"Voie : {self.current_lane}", (15, 130), font, 0.5, (220, 220, 220), 1)
+        
+        # Normalisation de l'action (OpenCV ne gère pas les accents par défaut)
+        action_map = {"Accélère": "Accel", "Freine": "Frein", "Arrêt": "Arret", "Inconnu": "Inconnu"}
+        action_clean = action_map.get(action_pedale, action_pedale)
+        
+        color_action = (0, 200, 100) if action_clean == "Accel" else (0, 100, 255)
+        cv2.putText(img, f"Action : {action_clean}", (180, 130), font, 0.5, color_action, 1)
+        
+        # --- Ligne 3 : Coût et Intersections ---
+        color_cost = (0, 100, 255) if min_cost >= 800.0 else (0, 200, 100)
+        cv2.putText(img, f"Cout : {min_cost:.0f}", (15, 170), font, 0.5, color_cost, 1)
+        
+        if self.is_in_intersection:
+            cv2.putText(img, "INTERSECTION", (180, 170), font, 0.5, (255, 200, 0), 1)
+
+        # --- Publication ---
+        img_msg = self.cv_bridge.cv2_to_imgmsg(img, encoding="bgr8")
+        self.pub_dash.publish(img_msg)
+
     def _publish_control(self, target_v, target_steer, min_cost):
         cmd = CarlaEgoVehicleControl()
         current_v = math.hypot(self.ego_twist.linear.x, self.ego_twist.linear.y)
@@ -417,6 +488,12 @@ class MotionPlannerNode(Node):
         
         if min_cost < EMERGENCY_COST_THRESHOLD and target_v > 0.0:
             self.get_logger().info(f"[{action_pedale}] V_cible: {target_v:.1f} | V_réel: {current_v:.1f} | Cost: {min_cost:.0f}")
+            
+        if min_cost < EMERGENCY_COST_THRESHOLD and target_v > 0.0:
+            self.get_logger().info(f"[{action_pedale}] V_cible: {target_v:.1f} | V_réel: {current_v:.1f} | Cost: {min_cost:.0f}")
+            
+        # NOUVELLE LIGNE ICI
+        self._publish_dashboard(current_v, target_v, action_pedale, min_cost)
             
         self.pub_cmd.publish(cmd)
 

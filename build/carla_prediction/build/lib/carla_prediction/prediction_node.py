@@ -14,6 +14,7 @@ import math
 import threading
 from pathlib import Path
 from collections import deque
+from rclpy.qos import QoSProfile, DurabilityPolicy
 
 import numpy as np
 import yaml
@@ -165,7 +166,8 @@ class CarlaPredictionNode(Node):
 
         try:
             from carla_msgs.msg import CarlaWorldInfo
-            self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_callback, 10)
+            latched_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+            self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_callback, latched_qos)
         except ImportError:
             self.get_logger().warn('carla_msgs introuvable — multi-town désactivé')
 
