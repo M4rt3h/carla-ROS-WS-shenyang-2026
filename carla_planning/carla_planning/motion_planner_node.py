@@ -148,7 +148,7 @@ class MotionPlannerNode(Node):
         
         if is_turn:
             self._lane_block_count = 0
-            if self.current_lane != 'RIGHT':
+            if self.current_lane != 'RIGHT' and self._right_lane_exists():
                 self.current_lane = 'RIGHT'
                 self.last_lane_change_time = current_time
         elif self.current_lane == 'RIGHT':
@@ -223,12 +223,54 @@ class MotionPlannerNode(Node):
             self.path_waypoints = self.path_waypoints[closest_idx:]
             self.active_path = self.active_path[closest_idx:]
             
-            if len(self.active_path) > 1 and min_dist < 2.5:
+            if len(self.active_path) > 1 and min_dist < 1.5:
                 self.path_waypoints.pop(0)
                 self.active_path.pop(0)
                 
         self._publish_path() 
         v, steer = self.best_control
+        now = self.get_clock().now().nanoseconds / 1e9
+
+        # ── Détection blocage ──────────────────────────────────────────
+        current_speed = math.hypot(
+            self.ego_twist.linear.x,
+            self.ego_twist.linear.y) if self.ego_twist else 0.0
+
+        traffic_blocking = self._traffic_state in ('red', 'stop')
+
+        if current_speed < 0.3 and v < 0.05 and not traffic_blocking:
+            if self.stuck_time == 0.0:
+                self.stuck_time = now
+            elif now - self.stuck_time > 3.0 and not self.is_recovering:
+                self.get_logger().warn('Véhicule bloqué — recovery engagé')
+                self.is_recovering = True
+                self.recovery_time = now
+                # Garde le dernier steer connu, ou neutre si inconnu
+                self.recovery_steer = steer if abs(steer) > 0.05 else 0.0
+        else:
+            self.stuck_time = 0.0
+
+        # ── Recovery : pousse douce jusqu'à ce que la vitesse reprenne ─
+        if self.is_recovering:
+            if current_speed > 1.0:
+                self.is_recovering = False
+                self.stuck_time = 0.0
+                self.get_logger().info('Recovery terminé')
+            elif now - self.recovery_time > 4.0:
+                # Recovery throttle inefficace → nudge du waypoint cible
+                if self.path_waypoints:
+                    wx, wy = self.path_waypoints[0]
+                    import random
+                    self.path_waypoints[0] = (
+                        wx + random.uniform(-0.05, 0.05),
+                        wy + random.uniform(-0.05, 0.05)
+                    )
+                    self.get_logger().warn('Recovery: nudge waypoint cible')
+                self.recovery_time = now  # reset timer pour laisser le nudge agir
+            else:
+                self._publish_control(0.35, self.recovery_steer, 0.0)
+                return
+
         self._publish_control(v, steer, self.best_cost)
 
     def _replan(self):
@@ -262,6 +304,17 @@ class MotionPlannerNode(Node):
 
     def _get_traffic_light_state(self) -> str:
         return self._traffic_state
+
+    def _right_lane_exists(self) -> bool:
+        if self._carla_map is None or self.ego_pose is None:
+            return True  # on ne sait pas → on laisse passer
+        ex = self.ego_pose.position.x
+        ey = -self.ego_pose.position.y
+        wp = self._carla_map.get_waypoint(carla.Location(x=ex, y=ey, z=0.0))
+        if wp is None:
+            return True
+        right = wp.get_right_lane()
+        return right is not None and right.lane_type == carla.LaneType.Driving
 
     def _generate_candidates(self):
         candidates = []

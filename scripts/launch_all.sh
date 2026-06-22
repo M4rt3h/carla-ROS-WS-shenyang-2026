@@ -155,7 +155,7 @@ open_t "carla_planning" "t6a" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_pl
 wait_bar 2 "Chargement planning..."
 
 echo -e "${B}▶ [6b/7]${N} Traffic sign node"
-open_t "traffic_sign" "t6b" "$ROS_SOURCE && ros2 run carla_planning traffic_sign_node --ros-args -p debug_image:=true"
+open_t "traffic_sign" "t6b" "conda run -n CarlaPrediction_ros --no-capture-output bash -c '$ROS_SOURCE && python /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_planning/lib/python3.8/site-packages/carla_planning/traffic_sign_node.py'"
 wait_bar 1 "Chargement traffic sign..."
 
 echo -e "${B}▶ [7/7]${N} RViz2"
