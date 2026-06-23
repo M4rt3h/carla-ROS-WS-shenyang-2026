@@ -25,7 +25,9 @@ setup(
     entry_points={
         'console_scripts': [
             'motion_planner_node = carla_planning.motion_planner_node:main',
-            'traffic_sign_node = carla_planning.traffic_sign_node:main'
+            'yolo_detector_node = carla_planning.yolo_detector_node:main',
+            'traffic_light_node = carla_planning.traffic_light_node:main',
+            'speed_limit_node = carla_planning.speed_limit_node:main'
         ],
     },
 )

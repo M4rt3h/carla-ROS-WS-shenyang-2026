@@ -154,9 +154,17 @@ echo -e "${B}▶ [6a/7]${N} Planning node"
 open_t "carla_planning" "t6a" "$CARLA_ENV && $ROS_SOURCE && ros2 launch carla_planning planning_visualization.launch.py"
 wait_bar 2 "Chargement planning..."
 
-echo -e "${B}▶ [6b/7]${N} Traffic sign node"
-open_t "traffic_sign" "t6b" "conda run -n CarlaPrediction_ros --no-capture-output bash -c '$ROS_SOURCE && python /home/martin/Desktop/Stage/Projet/ws_carla_ros/install/carla_planning/lib/python3.8/site-packages/carla_planning/traffic_sign_node.py'"
-wait_bar 1 "Chargement traffic sign..."
+echo -e "${B}▶ [6b/8]${N} YOLO Detector Node"
+open_t "yolo_detector" "t6b" "conda run -n CarlaPrediction_ros --no-capture-output bash -c '$ROS_SOURCE && python $WS/install/carla_planning/lib/python3.8/site-packages/carla_planning/yolo_detector_node.py'"
+wait_bar 2 "Chargement YOLO..."
+
+echo -e "${B}▶ [6c/8]${N} Traffic Light Specialist"
+open_t "traffic_light" "t6c" "conda run -n CarlaPrediction_ros --no-capture-output bash -c '$ROS_SOURCE && python $WS/install/carla_planning/lib/python3.8/site-packages/carla_planning/traffic_light_node.py'"
+wait_bar 1 "Chargement spécialiste feux..."
+
+echo -e "${B}▶ [6d/9]${N} Speed Limit Specialist"
+open_t "speed_limit" "t6d" "conda run -n CarlaPrediction_ros --no-capture-output bash -c '$ROS_SOURCE && python $WS/install/carla_planning/lib/python3.8/site-packages/carla_planning/speed_limit_node.py'"
+wait_bar 1 "Chargement spécialiste vitesses..."
 
 echo -e "${B}▶ [7/7]${N} RViz2"
 sleep 4
