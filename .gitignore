@@ -2,4 +2,5 @@ carla-ros-bridge/
 build/
 install/
 log/
+carla_planning/SpeedRecognition/dataset_vitesse/
 *.pt
