@@ -6,6 +6,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from cv_bridge import CvBridge
+import cv2
 from ultralytics import YOLO
 
 class YoloDetectorNode(Node):
@@ -32,36 +33,52 @@ class YoloDetectorNode(Node):
             cv_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
             h, w, _ = cv_image.shape
 
-            # ROI pour limiter la zone de recherche (comme ton ancien code)
-            y1, y2 = 0, h // 2
-            x1, x2 = 3 * w // 8, 5 * w // 8
-            roi = cv_image[y1:y2, x1:x2]
+            # Définition de la ROI stricte (uniquement utilisée pour filtrer les feux a posteriori)
+            roi_y1, roi_y2 = 0, h // 2
+            roi_x1, roi_x2 = 3 * w // 8, 5 * w // 8
 
-            # Inférence SANS préciser la classe (il détecte les 3 classes)
-            results = self.model.predict(roi, verbose=False)
+            # 1. Inférence sur TOUTE l'image (pour voir les panneaux sur les bords)
+            results = self.model.predict(cv_image, verbose=False)
 
             detections = []
             for det in results[0].boxes:
-                # Coordonnées relatives à la ROI
-                rx1, ry1, rx2, ry2 = det.xyxy[0].tolist()
+                class_id = int(det.cls[0].item())
+                confidence = float(det.conf[0].item())
                 
-                # Conversion des coordonnées pour qu'elles correspondent à l'image complète
-                abs_x1, abs_y1 = int(rx1 + x1), int(ry1 + y1)
-                abs_x2, abs_y2 = int(rx2 + x1), int(ry2 + y1)
+                # Coordonnées absolues sur l'image complète
+                x1, y1, x2, y2 = det.xyxy[0].tolist()
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
 
+                # 2. Filtrage spatial conditionnel
+                # Si c'est un feu tricolore (classe 0), on vérifie sa position
+                if class_id == 0:
+                    # On calcule le point central de la détection du feu
+                    cx = (x1 + x2) / 2
+                    cy = (y1 + y2) / 2
+                    
+                    # Si le centre du feu n'est pas dans notre zone de tolérance, on l'ignore
+                    if not (roi_x1 <= cx <= roi_x2 and roi_y1 <= cy <= roi_y2):
+                        continue
+
+                # Si on arrive ici, c'est soit un panneau, soit un feu valide
                 detections.append({
-                    "class_id": int(det.cls[0].item()),
-                    "confidence": float(det.conf[0].item()),
-                    "bbox": [abs_x1, abs_y1, abs_x2, abs_y2] # Format facile à recadrer
+                    "class_id": class_id,
+                    "confidence": confidence,
+                    "bbox": [x1, y1, x2, y2]
                 })
 
-            # Publication des détections
+            # Publication JSON
             msg_det = String()
             msg_det.data = json.dumps(detections)
             self.pub_detections.publish(msg_det)
 
-            # Publication du debug (l'image de la ROI avec les boîtes YOLO)
+            # 3. Image de debug
             debug_img = results[0].plot()
+            
+            # Dessin d'un cadre bleu clair pour visualiser la ROI des feux sur RViz
+            cv2.rectangle(debug_img, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 150, 0), 2)
+            cv2.putText(debug_img, "Zone Feux", (roi_x1, roi_y2 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 150, 0), 2)
+            
             self.pub_debug.publish(self.bridge.cv2_to_imgmsg(debug_img, encoding='bgr8'))
 
         except Exception as e:

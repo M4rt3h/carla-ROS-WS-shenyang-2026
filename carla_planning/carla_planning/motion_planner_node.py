@@ -8,15 +8,12 @@ from sensor_msgs.msg import Image
 import os
 import glob
 
-# Détection du chemin CARLA (variable d'environnement ou fallback sur la version 0.9.13)
 carla_root = os.environ.get('CARLA_ROOT', '/home/martin/Desktop/Stage/Documents fournis/Carla/CARLA_0.9.13')
 carla_api_path = os.path.join(carla_root, 'PythonAPI', 'carla')
 
-# Injection des chemins pour trouver le dossier 'agents'
 sys.path.insert(0, carla_api_path)
 sys.path.insert(0, os.path.join(carla_root, 'PythonAPI'))
 
-# Recherche et injection automatique du bon fichier .egg selon la version de Python
 try:
     sys.path.insert(0, glob.glob(os.path.join(carla_api_path, 'dist', 'carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
@@ -99,6 +96,10 @@ class MotionPlannerNode(Node):
         self._traffic_state = 'unknown'
         self.create_subscription(String, '/carla/perception/traffic_state',
             lambda msg: setattr(self, '_traffic_state', msg.data), 10)
+            
+        self.current_speed_limit = 'unknown'
+        self.create_subscription(String, '/carla/perception/speed_limit',
+            lambda msg: setattr(self, 'current_speed_limit', msg.data), 10)
                 
         latched_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.create_subscription(CarlaWorldInfo, '/carla/world_info', self.world_info_callback, latched_qos)
@@ -136,7 +137,6 @@ class MotionPlannerNode(Node):
         
         obstacles, _ = self._parse_marker_array(msg)
         
-        # --- MACHINE À ÉTATS (IA & CARTE SÉMANTIQUE HD) ---
         current_time = self.get_clock().now().nanoseconds / 1e9
         can_change = (current_time - self.last_lane_change_time) > 4.0 
         
@@ -155,14 +155,11 @@ class MotionPlannerNode(Node):
             if self._is_path_blocked(obstacles, right_path, look_ahead_dist=15.0):
                 self._lane_block_count += 1
                 if self._lane_block_count >= 5 and can_change:
-                    # 1. Validation Sémantique (Structure de la route)
                     if self._is_semantic_lane_valid(direction='LEFT'):
-                        # 2. Validation Dynamique (Prédictions des agents)
                         if not self._is_path_blocked(obstacles, left_path, look_ahead_dist=30.0):
                             self.current_lane = 'LEFT'
                             self.last_lane_change_time = current_time
                             self._lane_block_count = 0
-                            self.get_logger().info("Dépassement autorisé par la carte HD et initié.")
             else:
                 self._lane_block_count = 0 
         else:
@@ -170,8 +167,6 @@ class MotionPlannerNode(Node):
             if not self._is_path_blocked(obstacles, right_path, look_ahead_dist=25.0) and can_change:
                 self.current_lane = 'RIGHT'
                 self.last_lane_change_time = current_time
-                self.get_logger().info("Rabattement en cours.")
-        # --------------------------------------------
 
         candidates = self._generate_candidates()
         best, min_cost = None, float('inf')
@@ -210,7 +205,8 @@ class MotionPlannerNode(Node):
         self._update_active_path()
         
         if self.active_path:
-            horizon = min(20, len(self.active_path))
+            # CORRECTION : Augmentation de l'horizon de pop (la voiture parcours bcp de distance par tick à 80km/h)
+            horizon = min(80, len(self.active_path))
             closest_idx = 0
             min_dist = float('inf')
             
@@ -223,7 +219,8 @@ class MotionPlannerNode(Node):
             self.path_waypoints = self.path_waypoints[closest_idx:]
             self.active_path = self.active_path[closest_idx:]
             
-            if len(self.active_path) > 1 and min_dist < 1.5:
+            # Plus permissif à haute vitesse pour relâcher les waypoints
+            if len(self.active_path) > 1 and min_dist < 2.5:
                 self.path_waypoints.pop(0)
                 self.active_path.pop(0)
                 
@@ -231,7 +228,6 @@ class MotionPlannerNode(Node):
         v, steer = self.best_control
         now = self.get_clock().now().nanoseconds / 1e9
 
-        # ── Détection blocage ──────────────────────────────────────────
         current_speed = math.hypot(
             self.ego_twist.linear.x,
             self.ego_twist.linear.y) if self.ego_twist else 0.0
@@ -245,19 +241,16 @@ class MotionPlannerNode(Node):
                 self.get_logger().warn('Véhicule bloqué — recovery engagé')
                 self.is_recovering = True
                 self.recovery_time = now
-                # Garde le dernier steer connu, ou neutre si inconnu
                 self.recovery_steer = steer if abs(steer) > 0.05 else 0.0
         else:
             self.stuck_time = 0.0
 
-        # ── Recovery : pousse douce jusqu'à ce que la vitesse reprenne ─
         if self.is_recovering:
             if current_speed > 1.0:
                 self.is_recovering = False
                 self.stuck_time = 0.0
                 self.get_logger().info('Recovery terminé')
             elif now - self.recovery_time > 4.0:
-                # Recovery throttle inefficace → nudge du waypoint cible
                 if self.path_waypoints:
                     wx, wy = self.path_waypoints[0]
                     import random
@@ -265,8 +258,7 @@ class MotionPlannerNode(Node):
                         wx + random.uniform(-0.05, 0.05),
                         wy + random.uniform(-0.05, 0.05)
                     )
-                    self.get_logger().warn('Recovery: nudge waypoint cible')
-                self.recovery_time = now  # reset timer pour laisser le nudge agir
+                self.recovery_time = now
             else:
                 self._publish_control(0.35, self.recovery_steer, 0.0)
                 return
@@ -298,7 +290,6 @@ class MotionPlannerNode(Node):
             self.path_waypoints = self._smooth_path(sampled, iterations=3)
             self._update_active_path()
             self._publish_path()
-            self.get_logger().info(f'Route calculée et lissée : {len(self.path_waypoints)} waypoints.')
         except Exception as e:
             self.get_logger().error(f'Replanning échoué: {e}')
 
@@ -307,7 +298,7 @@ class MotionPlannerNode(Node):
 
     def _right_lane_exists(self) -> bool:
         if self._carla_map is None or self.ego_pose is None:
-            return True  # on ne sait pas → on laisse passer
+            return True 
         ex = self.ego_pose.position.x
         ey = -self.ego_pose.position.y
         wp = self._carla_map.get_waypoint(carla.Location(x=ex, y=ey, z=0.0))
@@ -325,25 +316,37 @@ class MotionPlannerNode(Node):
         state = self._get_traffic_light_state()
         if state in ('red', 'stop'):
             return []
-        target_v = self.get_parameter('target_speed').value
+            
+        if self.current_speed_limit != 'unknown':
+            target_v = float(self.current_speed_limit) / 3.6
+        else:
+            target_v = self.get_parameter('target_speed').value
+            
         if state == 'yellow':
             target_v *= 0.3
-        steers = [0.0, -0.05, 0.05, -0.15, 0.15, -0.4, 0.4, -0.7, 0.7]
+            
+        # CORRECTION : Vitesse de simulation réaliste
+        current_v = math.hypot(self.ego_twist.linear.x, self.ego_twist.linear.y) if self.ego_twist else 0.0
+        # Permet de casser le Deadlock à l'arrêt. On projette une accélération graduelle (current_v + 5.0) au lieu d'un bond à 80km/h
+        sim_v = max(3.0, min(target_v, current_v + 6.0))
+            
+        # CORRECTION : Éventail de braquage haute-résolution
+        steers = [0.0, -0.01, 0.01, -0.02, 0.02, -0.04, 0.04, -0.08, 0.08, -0.15, 0.15, -0.3, 0.3, -0.6, 0.6]
 
         for s in steers:
             pts = []
             current_yaw = base_yaw
             current_x = x
             current_y = y
-            yaw_rate = (target_v / 3.0) * math.tan(s * 0.7) 
+            yaw_rate = (sim_v / 3.0) * math.tan(s * 0.7) 
             
             t_sim = 0.0
             next_sample = 0.5
             
             for _ in range(25):
                 t_sim += 0.1
-                current_x += target_v * 0.1 * math.cos(current_yaw)
-                current_y += target_v * 0.1 * math.sin(current_yaw)
+                current_x += sim_v * 0.1 * math.cos(current_yaw)
+                current_y += sim_v * 0.1 * math.sin(current_yaw)
                 current_yaw += yaw_rate * 0.1
                 
                 if t_sim >= next_sample - 0.01:
@@ -418,7 +421,8 @@ class MotionPlannerNode(Node):
             return 0.0
             
         cte_cost = 0.0
-        local_path = self.active_path[:40] 
+        # CORRECTION : Horizon massif pour gérer les longs tentacules à très haute vitesse
+        local_path = self.active_path[:200] 
         base_tolerance = 4.0 if self.is_in_intersection else 2.2
         
         current_time = self.get_clock().now().nanoseconds / 1e9
@@ -436,41 +440,33 @@ class MotionPlannerNode(Node):
         return cte_cost * 1.5
 
     def _publish_dashboard(self, current_v, target_v, action_pedale, min_cost):
-        # Rendu "flat design" avec OpenCV
         img = np.zeros((210, 350, 3), dtype=np.uint8)
-        img[:] = (35, 35, 35) # Fond gris anthracite
+        img[:] = (35, 35, 35) 
         
         font = cv2.FONT_HERSHEY_SIMPLEX
         
-        # --- En-tête ---
         cv2.rectangle(img, (0, 0), (350, 40), (50, 50, 50), -1)
         cv2.putText(img, "HUD - PLANIFICATEUR", (15, 25), font, 0.6, (255, 255, 255), 2)
         
-        # --- Ligne 1 : Vitesse ---
         v_ratio = min(1.0, current_v / max(0.1, target_v)) if target_v > 0 else 0.0
         cv2.putText(img, f"Vitesse : {current_v:.1f} / {target_v:.1f} m/s", (15, 75), font, 0.5, (220, 220, 220), 1)
-        # Barre de progression
         cv2.rectangle(img, (15, 85), (335, 95), (60, 60, 60), -1)
         cv2.rectangle(img, (15, 85), (15 + int(320 * v_ratio), 95), (0, 200, 100), -1)
         
-        # --- Ligne 2 : État et Action ---
         cv2.putText(img, f"Voie : {self.current_lane}", (15, 130), font, 0.5, (220, 220, 220), 1)
         
-        # Normalisation de l'action (OpenCV ne gère pas les accents par défaut)
         action_map = {"Accélère": "Accel", "Freine": "Frein", "Arrêt": "Arret", "Inconnu": "Inconnu"}
         action_clean = action_map.get(action_pedale, action_pedale)
         
         color_action = (0, 200, 100) if action_clean == "Accel" else (0, 100, 255)
         cv2.putText(img, f"Action : {action_clean}", (180, 130), font, 0.5, color_action, 1)
         
-        # --- Ligne 3 : Coût et Intersections ---
         color_cost = (0, 100, 255) if min_cost >= 800.0 else (0, 200, 100)
         cv2.putText(img, f"Cout : {min_cost:.0f}", (15, 170), font, 0.5, color_cost, 1)
 
         if self.is_in_intersection:
             cv2.putText(img, "INTERSECTION", (180, 170), font, 0.5, (255, 200, 0), 1)
 
-        # --- Ligne 4 : Feux / Signalisation ---
         state = self._traffic_state
         state_color = {
             'red':     (0,   0,   220),
@@ -480,11 +476,20 @@ class MotionPlannerNode(Node):
             'unknown': (120, 120, 120),
         }.get(state, (120, 120, 120))
 
-        # Pastille colorée + texte
         cv2.circle(img, (25, 193), 8, state_color, -1)
         cv2.putText(img, state.upper(), (40, 198), font, 0.5, state_color, 1)
 
-        # --- Publication ---
+        if self.current_speed_limit != 'unknown':
+            cx, cy = 230, 185
+            cv2.circle(img, (cx, cy), 16, (255, 255, 255), -1)
+            cv2.circle(img, (cx, cy), 16, (0, 0, 200), 2)
+            
+            text_offset_x = 10 if len(self.current_speed_limit) > 1 else 5
+            cv2.putText(img, self.current_speed_limit, (cx - text_offset_x, cy + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+            cv2.putText(img, "km/h", (cx + 25, cy + 5), font, 0.4, (200, 200, 200), 1)
+        else:
+            cv2.putText(img, "Panneau : Inconnu", (180, 198), font, 0.5, (120, 120, 120), 1)
+
         img_msg = self.cv_bridge.cv2_to_imgmsg(img, encoding="bgr8")
         self.pub_dash.publish(img_msg)
 
@@ -554,7 +559,6 @@ class MotionPlannerNode(Node):
                 self.recovery_time = 3.0 
                 self.recovery_steer = -0.7 if target_steer > 0.05 else 0.7
                 
-                self.get_logger().warn("Blocage physique. Dégagement...")
                 cmd.throttle = 0.5
                 cmd.brake = 0.0
                 cmd.steer = self.recovery_steer
@@ -569,13 +573,6 @@ class MotionPlannerNode(Node):
         cmd.hand_brake = False
         cmd.manual_gear_shift = False
         
-        if min_cost < EMERGENCY_COST_THRESHOLD and target_v > 0.0:
-            self.get_logger().info(f"[{action_pedale}] V_cible: {target_v:.1f} | V_réel: {current_v:.1f} | Cost: {min_cost:.0f}")
-            
-        if min_cost < EMERGENCY_COST_THRESHOLD and target_v > 0.0:
-            self.get_logger().info(f"[{action_pedale}] V_cible: {target_v:.1f} | V_réel: {current_v:.1f} | Cost: {min_cost:.0f}")
-            
-        # NOUVELLE LIGNE ICI
         self._publish_dashboard(current_v, target_v, action_pedale, min_cost)
             
         self.pub_cmd.publish(cmd)
@@ -748,12 +745,11 @@ class MotionPlannerNode(Node):
         return False, 0.0
 
     def _is_semantic_lane_valid(self, direction='LEFT'):
-        """Reproduit le filtrage sémantique HD en validant la géométrie de la voie."""
         if self._carla_map is None or self.ego_pose is None:
             return False
 
         ex = self.ego_pose.position.x
-        ey = -self.ego_pose.position.y # Conversion ROS -> CARLA
+        ey = -self.ego_pose.position.y 
 
         current_wp = self._carla_map.get_waypoint(carla.Location(x=ex, y=ey, z=0.0))
         if not current_wp:
@@ -764,9 +760,7 @@ class MotionPlannerNode(Node):
         else:
             target_wp = current_wp.get_right_lane()
 
-        # Validation de l'existence de la voie et de son type (carrossable)
         if target_wp and target_wp.lane_type == carla.LaneType.Driving:
-            # Vérification du contresens : les identifiants de voie doivent être de même signe
             if current_wp.lane_id * target_wp.lane_id > 0:
                 return True
 

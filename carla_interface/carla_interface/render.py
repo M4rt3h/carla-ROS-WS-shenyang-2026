@@ -13,7 +13,6 @@ import carla
 import math
 import pygame
 import weakref
-import cv2
 
 # Colors
 COLOR_BUTTER_0 = pygame.Color(252, 233, 79)

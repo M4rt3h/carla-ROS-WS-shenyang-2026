@@ -9,7 +9,7 @@ from collections import deque
 import cv2
 import numpy as np
 import torch
-from scipy.signal import savgol_filter
+#from scipy.signal import savgol_filter
 
 import rclpy
 from rclpy.node import Node

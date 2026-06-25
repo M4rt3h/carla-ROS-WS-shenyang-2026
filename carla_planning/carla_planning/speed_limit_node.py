@@ -13,9 +13,9 @@ import torch
 import torch.nn as nn
 from torchvision import transforms
 
-# --- IL FAUT DÉFINIR L'ARCHITECTURE ICI POUR QUE PYTORCH PUISSE LA CHARGER ---
+# --- ARCHITECTURE DU MODÈLE ---
 class TinySpeedNet(nn.Module):
-    def __init__(self, num_classes=8):
+    def __init__(self, num_classes=9): #Nombre de classes du modele de reconnaissance des panneaux de limitation de vitesse
         super(TinySpeedNet, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2d(3, 16, kernel_size=3, padding=1),
@@ -55,8 +55,8 @@ class SpeedLimitNode(Node):
         self.get_logger().info('Chargement du modèle TinySpeedNet (Classification)...')
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.speed_mapping = {
-            0: '5', 1: '15', 2: '30', 3: '40', 
-            4: '50', 5: '60', 6: '70', 7: '80'
+            0: '15', 1: '20', 2: '30', 3: '40', 
+            4: '50', 5: '60', 6: '70', 7: '80', 8: '90'
         }
         
         # Récupération propre du modèle
@@ -65,7 +65,6 @@ class SpeedLimitNode(Node):
         
         self.classifier = None
         try:
-            # Chargement direct du modèle complet entraîné
             self.classifier = torch.load(model_path, map_location=self.device)
             self.classifier = self.classifier.to(self.device)
             self.classifier.eval()
@@ -73,7 +72,7 @@ class SpeedLimitNode(Node):
         except Exception as e:
             self.get_logger().error(f"Erreur de chargement du modèle : {e}")
 
-        # Transformation adaptée à TinySpeedNet (64x64)
+        # Transformation
         self.transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize((64, 64)),
@@ -132,13 +131,23 @@ class SpeedLimitNode(Node):
         except Exception as e:
             self.get_logger().error(f"Erreur d'inférence CNN : {e}")
 
-        # Machine d'état
+        # --- MACHINE D'ÉTAT ROBUSTE ---
         now = self.get_clock().now().nanoseconds / 1e9
+        
+        # Logique anti-chute aberrante
+        high_speeds = ['40', '50', '60', '70', '80']
+        low_speeds = ['5', '15']
+        is_suspicious_drop = self._state in high_speeds and raw_speed in low_speeds
+        
+        # Seuil dynamique : 15 frames (très long) si suspect, sinon 5 frames (standard)
+        required_frames = 15 if is_suspicious_drop else 5
         
         if now >= self._state_hold_until:
             if raw_speed == self._candidate_state:
                 self._candidate_count += 1
-                if self._candidate_count >= 3:
+                
+                # Validation finale
+                if self._candidate_count >= required_frames:
                     self._state = raw_speed
                     self._state_hold_until = now + self._STATE_MIN_HOLD
                     self._candidate_count = 0
@@ -146,13 +155,15 @@ class SpeedLimitNode(Node):
                 self._candidate_state = raw_speed
                 self._candidate_count = 1
 
+        # Publication au planificateur
         out = String()
         out.data = self._state
         self._pub.publish(out)
 
-        self._publish_debug(img_sign, raw_speed)
+        # Mise à jour du debug visuel
+        self._publish_debug(img_sign, raw_speed, self._candidate_count, required_frames)
 
-    def _publish_debug(self, img_sign, raw_speed):
+    def _publish_debug(self, img_sign, raw_speed, current_count, required_frames):
         TARGET_H = 200
         SEP_W = 4
         SEP = np.full((TARGET_H, SEP_W, 3), 80, dtype=np.uint8)
@@ -166,11 +177,16 @@ class SpeedLimitNode(Node):
         img_sign_resized = resize_h(img_sign)
         
         text_panel = np.zeros((TARGET_H, 250, 3), dtype=np.uint8)
-        cv2.putText(text_panel, "Limite:", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(text_panel, "Limite:", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         
         color = (0, 255, 0) if raw_speed != "unknown" else (0, 0, 255)
-        cv2.putText(text_panel, f"{raw_speed} km/h", (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3)
-        cv2.putText(text_panel, f"ETAT: {self._state}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(text_panel, f"{raw_speed} km/h", (10, 75), cv2.FONT_HERSHEY_SIMPLEX, 1.2, color, 3)
+        cv2.putText(text_panel, f"ETAT: {self._state}", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        
+        # Affichage de la jauge de confirmation pour le debug
+        progression = f"Valid: {current_count}/{required_frames}"
+        color_prog = (0, 150, 255) if current_count > 0 else (100, 100, 100)
+        cv2.putText(text_panel, progression, (10, 170), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color_prog, 2)
 
         row = np.hstack([img_sign_resized, SEP, text_panel])
         self._pub_dbg.publish(self.bridge.cv2_to_imgmsg(row, encoding='bgr8'))
